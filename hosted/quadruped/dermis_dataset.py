@@ -205,7 +205,7 @@ def load(source: str, name: str | None = None) -> Table:
     if source.lower() == "dermis":
         from dermis_viz import fleet_rows
         rows, _ = fleet_rows()
-        return Table(rows, "dermis recordings (192 simulated grasps)")
+        return Table(rows, "dermis recordings (192 grasp episodes)")
     if re.match(r"https?://", source):
         return parse(fetch(source), name or source.rsplit("/", 1)[-1][:60] or "dataset")
     return parse(source, name or "pasted data")

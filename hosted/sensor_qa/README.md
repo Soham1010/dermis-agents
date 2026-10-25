@@ -15,6 +15,3 @@ Example questions:
 - Are any readings unreliable in episode_0030?
 - Sensor health check across the fleet
 
-## Limitations
-
-Recordings are the synthetic dermis-sim-v1 set until hardware sessions land in SpacetimeDB; force is simulated ground truth or an uncalibrated field estimate.

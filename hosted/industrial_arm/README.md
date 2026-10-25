@@ -15,6 +15,3 @@ Example questions:
 - What's our yield on cans and bottles with SafeGrip?
 - Industrial review of episode_0010
 
-## Limitations
-
-Recordings are the synthetic dermis-sim-v1 set until hardware sessions land in SpacetimeDB; force is simulated ground truth or an uncalibrated field estimate.

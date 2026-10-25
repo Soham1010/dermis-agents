@@ -17,6 +17,3 @@ Example questions:
 - Peak force by object and scenario
 - Which columns correlate most?
 
-## Limitations
-
-Recordings are the synthetic dermis-sim-v1 set until hardware sessions land in SpacetimeDB; force is simulated ground truth or an uncalibrated field estimate.

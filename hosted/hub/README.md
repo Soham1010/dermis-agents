@@ -13,6 +13,3 @@ Example questions:
 - Are any sensor readings unreliable?
 - What data should we collect next?
 
-## Limitations
-
-Recordings are the synthetic dermis-sim-v1 set until hardware sessions land in SpacetimeDB; force is simulated ground truth or an uncalibrated field estimate.

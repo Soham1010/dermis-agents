@@ -53,4 +53,20 @@ QUICKCHART_URL = os.getenv("QUICKCHART_URL", "https://quickchart.io/chart")
 # Precomputed analysis every agent reads (built by `python -m dermis_agents.snapshot`). Hosted agents
 # have no local file and fetch SNAPSHOT_URL instead.
 SNAPSHOT_PATH = Path(os.getenv("DERMIS_SNAPSHOT_PATH", ROOT / "snapshot" / "dermis_snapshot.json"))
-SNAPSHOT_URL = os.getenv("DERMIS_SNAPSHOT_URL", "")
+SNAPSHOT_URL = os.getenv("DERMIS_SNAPSHOT_URL", 'https://raw.githubusercontent.com/Soham1010/dermis-agents/main/snapshot/dermis_snapshot.json')
+
+
+def asi1() -> tuple[str, str]:
+    """(api key, base url), read when called: hosted agents may get env vars after this module loads.
+
+    DERMIS_ASI1_API_KEY (an Agentverse secret holding our own ASI:One key) wins over the ASI1_API_KEY that
+    Agentverse injects, which goes through Agentverse's own LLM budget and stops when that runs out."""
+    own = os.getenv("DERMIS_ASI1_API_KEY")
+    if own:
+        return own, (os.getenv("DERMIS_ASI1_BASE_URL") or "https://api.asi1.ai/v1").rstrip("/")
+    return (os.getenv("ASI1_API_KEY") or ASI1_API_KEY,
+            (os.getenv("ASI1_BASE_URL") or ASI1_BASE_URL).rstrip("/"))
+
+
+def snapshot_url() -> str:
+    return os.getenv("DERMIS_SNAPSHOT_URL") or SNAPSHOT_URL

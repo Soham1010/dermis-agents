@@ -152,7 +152,8 @@ async def converse(ctx: Context, sender: str, key: str, text: str, fallback, ask
     session = ctx.storage.get(f"session:{sender}") or {}
     result = await brain.converse(key, text, history, ask, session)
     if result is None:
-        ctx.logger.warning("ASI:One unavailable; answering with the structured report")
+        import dermis_llm as llm
+        ctx.logger.warning(f"ASI:One unavailable ({llm.last_error or 'no answer'}); answering with the structured report")
         result = {"text": await fallback(), "card": None, "purchase": None}
     if result.get("purchase") and key == HUB_KEY:
         result["card"] = cards.purchase_review(result["purchase"], payments.PRICE_FET, payments.NETWORK)
@@ -280,5 +281,28 @@ def build(key: str) -> Agent:
     addresses = {p.key: address_for(p.key) for p in PROFILES} if key == HUB_KEY else None
     for proto in protocols_for(key, addresses):
         agent.include(proto, publish_manifest=True)
+
+    @agent.on_event("startup")
+    async def health(ctx: Context):
+        ctx.logger.info(f"self-check: {await self_check()}")
     return agent
 
+
+
+async def self_check() -> str:
+    """One line for the logs at startup: can this agent reach its data and the LLM? (No secrets.)"""
+    import dermis_llm as llm
+    from dermis_store import snapshot
+    parts = []
+    try:
+        snap = await asyncio.to_thread(snapshot)
+        parts.append(f"data ok ({len(snap.episodes)} episodes from {snap.origin[:70]})")
+    except Exception as e:
+        parts.append(f"DATA FAILED: {e}")
+    key, base = config.asi1()
+    if not key:
+        parts.append("LLM FAILED: no ASI1_API_KEY in the environment")
+    else:
+        msg = await llm.chat([{"role": "user", "content": "Reply with the word ok."}], [], max_tokens=5)
+        parts.append(f"LLM ok ({base}, {config.ASI1_AGENT_MODEL})" if msg else f"LLM FAILED: {llm.last_error}")
+    return " | ".join(parts)

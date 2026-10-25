@@ -165,6 +165,11 @@ avctl auth login                                 # once, in the browser
 .venv/bin/python tools/deploy_hosted.py          # builds hosted/<agent>/ and deploys all 8
 ```
 
+Hosted agents need your ASI:One key as an Agentverse secret named `DERMIS_ASI1_API_KEY` (put
+`DERMIS_ASI1_API_KEY=...` in a file and run `avctl hosting add secrets -a <agent address> -f <file>` per
+agent). Without it they use the key Agentverse injects, which stops working when the account's LLM budget
+runs out. Each agent logs a `self-check:` line at startup saying whether its data and LLM work.
+
 `tools/build_hosted.py` turns the package into one folder per hosted agent (same modules, imports
 flattened). Free accounts hold 8 agents, so the hosted set is the hub, Visualizer, Data Explorer,
 humanoid arm, industrial arm, quadruped, warehouse and sensor health; the other specialists answer

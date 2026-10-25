@@ -51,7 +51,7 @@ os.environ.setdefault("DERMIS_SNAPSHOT_URL", {url!r})
 from uagents import Agent
 
 from dermis_payments import set_wallet
-from dermis_uagents import protocols_for
+from dermis_uagents import protocols_for, self_check
 
 AGENT_KEY = {key!r}
 # Specialists deployed as their own hosted agents (the hub asks them; any other runs inside the hub).
@@ -61,6 +61,11 @@ agent = Agent()
 set_wallet(agent.wallet)  # receives the certified-report payments (hub)
 for _protocol in protocols_for(AGENT_KEY, ADDRESSES):
     agent.include(_protocol, publish_manifest=True)
+
+
+@agent.on_event("startup")
+async def _self_check(ctx):
+    ctx.logger.info(f"self-check: {{await self_check()}}")
 
 if __name__ == "__main__":
     agent.run()
@@ -99,6 +104,10 @@ def deployed_address(key: str) -> str:
 
 def build(url: str) -> list[Path]:
     flat = {name: flatten((PKG / f"{name}.py").read_text()) for name in MODULES}
+    # No reliance on env vars for the data: the URL is written into the hosted config itself.
+    marker = 'SNAPSHOT_URL = os.getenv("DERMIS_SNAPSHOT_URL", "")'
+    assert marker in flat["config"], "config.py changed: update the snapshot URL baking"
+    flat["config"] = flat["config"].replace(marker, f'SNAPSHOT_URL = os.getenv("DERMIS_SNAPSHOT_URL", {url!r})')
     hub_addresses = {k: a for k in HOSTED if k != "hub" and (a := deployed_address(k)).startswith("agent1")}
     folders = []
     for key in HOSTED:

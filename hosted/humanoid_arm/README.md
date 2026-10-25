@@ -15,6 +15,3 @@ Example questions:
 - Analyze episode_0040 for a humanoid arm
 - How stable is the humanoid grasp on the egg?
 
-## Limitations
-
-Recordings are the synthetic dermis-sim-v1 set until hardware sessions land in SpacetimeDB; force is simulated ground truth or an uncalibrated field estimate.

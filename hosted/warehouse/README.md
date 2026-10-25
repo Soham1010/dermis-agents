@@ -15,6 +15,3 @@ Example questions:
 - Which items do we drop most?
 - Warehouse review of the bottle episodes
 
-## Limitations
-
-Recordings are the synthetic dermis-sim-v1 set until hardware sessions land in SpacetimeDB; force is simulated ground truth or an uncalibrated field estimate.

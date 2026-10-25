@@ -20,8 +20,12 @@ OBJECTS = ("can", "egg", "ball", "cup", "bottle", "sponge")
 SCENARIOS = ("nominal", "crush", "light_grip", "drop")
 
 
+last_error = ""  # why the most recent ASI:One call failed, for the agent logs (never contains the key)
+
+
 async def complete(system: str, user: str, json_mode: bool = False, max_tokens: int = 500) -> str | None:
-    if not config.ASI1_API_KEY:
+    key, base = config.asi1()
+    if not key:
         return None
     body = {
         "model": config.ASI1_MODEL,
@@ -34,8 +38,8 @@ async def complete(system: str, user: str, json_mode: bool = False, max_tokens: 
     try:
         async with httpx.AsyncClient(timeout=25) as client:
             r = await client.post(
-                f"{config.ASI1_BASE_URL}/chat/completions",
-                headers={"Authorization": f"Bearer {config.ASI1_API_KEY}"},
+                f"{base}/chat/completions",
+                headers={"Authorization": f"Bearer {key}"},
                 json=body,
             )
             r.raise_for_status()
@@ -47,21 +51,28 @@ async def complete(system: str, user: str, json_mode: bool = False, max_tokens: 
 
 async def chat(messages: list[dict], tools: list[dict], max_tokens: int = 1200) -> dict | None:
     """One tool-calling turn. Returns the assistant message (content and/or tool_calls), or None."""
-    if not config.ASI1_API_KEY:
+    global last_error
+    key, base = config.asi1()
+    if not key:
+        last_error = "no ASI1_API_KEY in this agent's environment"
         return None
     body = {"model": config.ASI1_AGENT_MODEL, "messages": messages, "tools": tools,
             "temperature": 0.3, "max_tokens": max_tokens}
     try:
         async with httpx.AsyncClient(timeout=45) as client:
             r = await client.post(
-                f"{config.ASI1_BASE_URL}/chat/completions",
-                headers={"Authorization": f"Bearer {config.ASI1_API_KEY}"},
+                f"{base}/chat/completions",
+                headers={"Authorization": f"Bearer {key}"},
                 json=body,
             )
-            r.raise_for_status()
+            if r.status_code >= 400:
+                last_error = f"HTTP {r.status_code} from {base}: {r.text[:200]}"
+                return None
+            last_error = ""
             return r.json()["choices"][0]["message"]
     except (httpx.HTTPError, KeyError, IndexError, ValueError) as e:
-        log.warning("ASI:One agent call failed: %s", e)
+        last_error = f"{type(e).__name__}: {e}"[:300]
+        log.warning("ASI:One agent call failed: %s", last_error)
         return None
 
 
@@ -103,7 +114,7 @@ def parse_rules(text: str) -> dict:
 
 async def parse_request(text: str) -> dict:
     rules = parse_rules(text)
-    if "episode" in rules or not config.ASI1_API_KEY:
+    if "episode" in rules or not config.asi1()[0]:
         return rules
     reply = await complete(
         "Extract fields from a request about robot touch-sensor recordings. Reply with JSON only, keys: "

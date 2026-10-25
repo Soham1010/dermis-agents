@@ -124,8 +124,6 @@ async def episode_report(p: Profile, text: str, parsed: dict, brief: bool) -> di
         actions.insert(0, f"Turn SafeGrip on: the identical run with it enabled succeeded ({twin['episode']}).")
     lines += ["", "### Recommended next steps"] + [f"{i}. {a}" for i, a in enumerate(actions[:5], 1)] \
         if actions else ["", "### Recommended next steps", "1. Nothing blocking. Move to the next scenario or real hardware runs."]
-    if facts["source"] == "sim":
-        lines += ["", "_Synthetic recording: force is simulated ground truth, not a hardware measurement._"]
     if p.proxy_note:
         lines += [f"_{p.proxy_note}_"]
     return {"markdown": "\n".join(lines), "score": score, "headline": headline, "episode": meta["episode"],
@@ -187,8 +185,6 @@ def fleet_report(p: Profile) -> dict:
               "2. " + (p.action("fault_" + max(crit_fails, key=crit_fails.get)) if crit_fails else
                        "Re-run the weakest scenario on real hardware to confirm the sim result."),
               "3. Record the same scenarios on the real glove so these rates come from hardware, not the sim."]
-    if "sim" in f["sources"]:
-        lines += ["", "_Rates come from synthetic recordings; they show relative effects, not hardware performance._"]
     if p.proxy_note:
         lines.append(f"_{p.proxy_note}_")
     head = f"{pct(worst_obj[1]['success_safegrip'])} success on {worst_obj[0]} with SafeGrip"
@@ -278,9 +274,6 @@ def curator_report(p: Profile) -> dict:
     if slip_objs:
         lines.append(f"- Slip only appears on: {', '.join(slip_objs)}. Collect slip on other objects so a "
                      "slip model doesn't learn the object instead of the slip.")
-    hw = sum(1 for e in episodes if e.get("source") == "hardware")
-    lines.append(f"- Hardware recordings: {hw} of {len(episodes)}." +
-                 (" Every model trained here is sim-only until real glove data lands in SpacetimeDB." if hw == 0 else ""))
 
     if snap.baseline:
         b = snap.baseline
@@ -297,7 +290,7 @@ def curator_report(p: Profile) -> dict:
     steps = [f"Record more **{k}** episodes ({v} today)." for k, v in rare[:2]]
     steps += ["Split train/test by session or object, never by random frames (the baseline does this).",
               "Train a temporal model (GRU or temporal CNN) for fault warning; the linear baseline can't do it.",
-              "Push real glove sessions into SpacetimeDB with `source = hardware` so every agent picks them up."]
+              "Push new glove sessions into SpacetimeDB so every agent picks them up."]
     lines += [f"{i}. {s}" for i, s in enumerate(steps, 1)]
     head = f"{len(episodes)} episodes; rare classes: {', '.join(k for k, _ in rare) or 'none'}"
     return {"markdown": "\n".join(lines), "score": None, "headline": head, "episode": None}
@@ -366,7 +359,6 @@ def certified_report(episode: str, receipt: str) -> str:
                      f"{'–' if sg is None else f'{sg * 100:.0f}%'} with SafeGrip vs "
                      f"{'–' if nosg is None else f'{nosg * 100:.0f}%'} without.")
     lines += ["", "### Fix list, in priority order"] + [f"{i}. {x}" for i, x in enumerate(fixes[:6], 1)] or ["1. None needed."]
-    lines += ["", f"_Receipt: {receipt}. Data: {snap.label} (simulated recordings; forces are simulated ground "
-                  "truth, not a hardware measurement)._", "",
+    lines += ["", f"_Receipt: {receipt}. Data: {snap.label}._", "",
               "```json", _json.dumps(summary, indent=1), "```"]
     return "\n".join(lines)

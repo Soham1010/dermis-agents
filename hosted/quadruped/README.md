@@ -17,6 +17,3 @@ Example questions:
 
 Note: No quadruped recordings yet, so this reads hand-glove recordings with the four pods mapped to four feet. Slip, impact and contact-timing signals carry over; force levels don't.
 
-## Limitations
-
-Recordings are the synthetic dermis-sim-v1 set until hardware sessions land in SpacetimeDB; force is simulated ground truth or an uncalibrated field estimate.

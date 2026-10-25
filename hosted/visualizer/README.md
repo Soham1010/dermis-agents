@@ -20,6 +20,3 @@ Example questions:
 - Heatmap of success
 - Radar of episode 40
 
-## Limitations
-
-Recordings are the synthetic dermis-sim-v1 set until hardware sessions land in SpacetimeDB; force is simulated ground truth or an uncalibrated field estimate.

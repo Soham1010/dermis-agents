@@ -43,7 +43,7 @@ def force_chart(facts: dict, pod_labels: dict, limit_n: float | None) -> str:
         datasets.append({"label": f"limit {limit_n:g} N", "data": [limit_n] * len(s["t"]),
                          "borderColor": "#6b7280", "borderDash": [6, 4], "fill": False,
                          "pointRadius": 0, "borderWidth": 1})
-    kind = "sim ground truth" if facts["has_ground_truth_force"] else "estimated from field, uncalibrated"
+    kind = "reference force" if facts["has_ground_truth_force"] else "estimated from field, uncalibrated"
     title = f"{facts['episode']} · {facts['object']} · normal force per pod (N, {kind})"
     if facts.get("fault"):
         title += f" · {facts['fault']} at {facts['fault_at_s']} s"

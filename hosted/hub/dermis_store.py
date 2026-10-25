@@ -56,16 +56,16 @@ def snapshot() -> Snapshot:
         if _cache and _cache[0] == key:
             return _cache[1]
         snap = Snapshot(json.loads(path.read_text()), str(path))
-    elif config.SNAPSHOT_URL:
-        key = ("url", config.SNAPSHOT_URL)
+    elif url := config.snapshot_url():
+        key = ("url", url)
         if _cache and _cache[0] == key:
             return _cache[1]
         try:
-            r = httpx.get(config.SNAPSHOT_URL, timeout=30, follow_redirects=True)
+            r = httpx.get(url, timeout=30, follow_redirects=True)
             r.raise_for_status()
-            snap = Snapshot(r.json(), config.SNAPSHOT_URL)
+            snap = Snapshot(r.json(), url)
         except (httpx.HTTPError, ValueError) as e:
-            raise DataUnavailable(f"couldn't download the snapshot from {config.SNAPSHOT_URL}: {e}") from e
+            raise DataUnavailable(f"couldn't download the snapshot from {url}: {e}") from e
     else:
         raise DataUnavailable("no snapshot: run `python -m dermis_agents.snapshot` or set DERMIS_SNAPSHOT_URL")
     _cache = (key, snap)

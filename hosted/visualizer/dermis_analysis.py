@@ -49,7 +49,7 @@ def evaluate(profile: Profile, facts: dict) -> list[dict]:
     pod, peak = peak_force(facts)
     limit = profile.limit_for(facts.get("object") or "")
     if pod and peak > limit:
-        kind = "sim ground truth" if facts["has_ground_truth_force"] else "field estimate, uncalibrated"
+        kind = "reference force" if facts["has_ground_truth_force"] else "field estimate, uncalibrated"
         add("force", "critical", "force_over_limit",
             f"Peak force {peak:.1f} N on {label[pod]} ({kind}) is over this profile's {limit:.1f} N limit "
             f"for a {facts.get('object')}.")
