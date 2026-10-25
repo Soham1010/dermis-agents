@@ -1,5 +1,5 @@
 [agent]
-  address = ""
+  address = "agent1q02mu7cnwewnnc0k4v474nx5qjda4mdp9tvxlwjtrtccmyce7r5qqgzq3xj"
   include = ""
   readme_path = "README.md"
   description = "Robot touch intelligence: routes Dermis tactile-sensor questions to specialist agents for humanoid, industrial, quadruped, warehouse and more, with charts and tables."

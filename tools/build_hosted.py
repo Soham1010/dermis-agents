@@ -117,7 +117,7 @@ def build(url: str) -> list[Path]:
         (d / "pyproject.toml").write_text(
             f'[project]\nname = "{name.replace("_", "-")}"\nversion = "0.2.0"\ndescription = {toml_str(title)}\n'
             'readme = "README.md"\nrequires-python = ">=3.10,<3.13"\ndependencies = [\n'
-            '    "uagents>=0.25.5",\n    "httpx",\n]\n')
+            '    "uagents>=0.25.5",\n]\n')
         examples = (["Compare all applications on episode 4", "Show me a dashboard chart",
                      "Which items do we drop most in the warehouse?", "Pivot table of success by scenario",
                      "Are any sensor readings unreliable?"] if key == "hub" else list(BY_KEY[key].examples))[:5]

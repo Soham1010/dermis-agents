@@ -1,5 +1,5 @@
 [agent]
-  address = ""
+  address = "agent1qtnldfaawly9j4gt55ujddflthw688dulmqm9hvzznmgprd7s94fgryg5rl"
   include = ""
   readme_path = "README.md"
   description = "charts of Dermis recordings: time series, overlays, histograms, scatter plots, pies, radar profiles, heatmaps and dashboards"

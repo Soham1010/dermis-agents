@@ -5,7 +5,6 @@ typed internal protocol (TouchQuery -> TouchReport), and if a specialist doesn't
 that specialist's analysis itself, so a dead agent degrades the answer instead of breaking it.
 """
 
-from __future__ import annotations
 
 import asyncio
 import json

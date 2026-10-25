@@ -14,7 +14,15 @@ from dermis_uagents import protocols_for
 
 AGENT_KEY = 'hub'
 # Specialists deployed as their own hosted agents (the hub asks them; any other runs inside the hub).
-ADDRESSES = {}
+ADDRESSES = {
+    "visualizer": "agent1qtnldfaawly9j4gt55ujddflthw688dulmqm9hvzznmgprd7s94fgryg5rl",
+    "data_explorer": "agent1qwls2zmjuzdr9q89448pq9wnumjx8fw2l2k5wfyyvrkr2nxnec87k97gsx5",
+    "humanoid_arm": "agent1qgpdsvnnqklc5gy3xvenk30saa2dzn34sve8ekfad562t6wctueqypav4fv",
+    "industrial_arm": "agent1qt7agfdeh7vzppus94fclf7l27v0sqxhhq5stdr553w3rv8p9cadxzgfazs",
+    "quadruped": "agent1q0zjcjwll2v7utcwh0crghdtf4ckw0lvetxmlsu66xvaj9633mkfyrdpyrq",
+    "warehouse": "agent1qvykzu7slhz3nzchcu20v7gyhg25kp9crtekl6gu2rul8l6v5qy265xanhg",
+    "sensor_qa": "agent1qfr6rvpp8uhl53fsq773e2ykz2nfzd57v5lug57hf3supv8km6947c9xur0"
+}
 
 agent = Agent()
 set_wallet(agent.wallet)  # receives the certified-report payments (hub)

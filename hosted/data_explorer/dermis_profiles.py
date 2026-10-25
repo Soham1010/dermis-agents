@@ -4,7 +4,6 @@ Numbers here are engineering defaults to tune, not standards. Object yield force
 dataset README (can 18 N, egg 25 N, cup 4 N, engineering estimates to be measured on the bench).
 """
 
-from __future__ import annotations
 
 from dataclasses import dataclass, field
 

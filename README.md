@@ -57,8 +57,20 @@ Agentverse accounts hold 8); the other specialists answer through the hub.
 Hosted agents get their addresses from Agentverse; after deploying, they're printed by
 `tools/deploy_hosted.py` and stored in `hosted/<agent>/.avctl/config.toml`.
 
-<!-- Fill in after deploying, for judges: -->
-**Hub address:** `agent1q…` · **Agentverse profile:** https://agentverse.ai/agents/details/agent1q…
+### Deployed agents (hosted on Agentverse)
+
+**Start here: Dermis Hub** `agent1q02mu7cnwewnnc0k4v474nx5qjda4mdp9tvxlwjtrtccmyce7r5qqgzq3xj` · [Agentverse profile](https://agentverse.ai/agents/details/agent1q02mu7cnwewnnc0k4v474nx5qjda4mdp9tvxlwjtrtccmyce7r5qqgzq3xj)
+
+| Agent | Address | Agentverse |
+|---|---|---|
+| `hub` | `agent1q02mu7cnwewnnc0k4v474nx5qjda4mdp9tvxlwjtrtccmyce7r5qqgzq3xj` | [profile](https://agentverse.ai/agents/details/agent1q02mu7cnwewnnc0k4v474nx5qjda4mdp9tvxlwjtrtccmyce7r5qqgzq3xj) |
+| `data_explorer` | `agent1qwls2zmjuzdr9q89448pq9wnumjx8fw2l2k5wfyyvrkr2nxnec87k97gsx5` | [profile](https://agentverse.ai/agents/details/agent1qwls2zmjuzdr9q89448pq9wnumjx8fw2l2k5wfyyvrkr2nxnec87k97gsx5) |
+| `visualizer` | `agent1qtnldfaawly9j4gt55ujddflthw688dulmqm9hvzznmgprd7s94fgryg5rl` | [profile](https://agentverse.ai/agents/details/agent1qtnldfaawly9j4gt55ujddflthw688dulmqm9hvzznmgprd7s94fgryg5rl) |
+| `humanoid_arm` | `agent1qgpdsvnnqklc5gy3xvenk30saa2dzn34sve8ekfad562t6wctueqypav4fv` | [profile](https://agentverse.ai/agents/details/agent1qgpdsvnnqklc5gy3xvenk30saa2dzn34sve8ekfad562t6wctueqypav4fv) |
+| `industrial_arm` | `agent1qt7agfdeh7vzppus94fclf7l27v0sqxhhq5stdr553w3rv8p9cadxzgfazs` | [profile](https://agentverse.ai/agents/details/agent1qt7agfdeh7vzppus94fclf7l27v0sqxhhq5stdr553w3rv8p9cadxzgfazs) |
+| `quadruped` | `agent1q0zjcjwll2v7utcwh0crghdtf4ckw0lvetxmlsu66xvaj9633mkfyrdpyrq` | [profile](https://agentverse.ai/agents/details/agent1q0zjcjwll2v7utcwh0crghdtf4ckw0lvetxmlsu66xvaj9633mkfyrdpyrq) |
+| `warehouse` | `agent1qvykzu7slhz3nzchcu20v7gyhg25kp9crtekl6gu2rul8l6v5qy265xanhg` | [profile](https://agentverse.ai/agents/details/agent1qvykzu7slhz3nzchcu20v7gyhg25kp9crtekl6gu2rul8l6v5qy265xanhg) |
+| `sensor_qa` | `agent1qfr6rvpp8uhl53fsq773e2ykz2nfzd57v5lug57hf3supv8km6947c9xur0` | [profile](https://agentverse.ai/agents/details/agent1qfr6rvpp8uhl53fsq773e2ykz2nfzd57v5lug57hf3supv8km6947c9xur0) |
 
 ## Try it in ASI:One
 

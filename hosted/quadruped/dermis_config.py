@@ -3,7 +3,9 @@
 import os
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+# Hosted Agentverse agents may load modules without __file__; there the project root is the cwd.
+_here = globals().get("__file__")
+ROOT = Path(_here).resolve().parent.parent if _here else Path.cwd()
 
 
 def _load_dotenv() -> None:

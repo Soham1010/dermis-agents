@@ -74,6 +74,17 @@ def main() -> None:
     specialists = [k for k in hb.HOSTED if k in keys and k != "hub"]
 
     hb.build(url)
+    # Load every agent the way Agentverse will before uploading anything.
+    broken = []
+    for k in hb.HOSTED:
+        r = subprocess.run([sys.executable, str(Path(__file__).parent / "check_hosted.py"), str(hb.OUT / k)],
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            broken.append(k)
+            print(f"❌ {k} doesn't load:\n   " + "\n   ".join((r.stdout + r.stderr).strip().splitlines()[-4:]))
+    if broken:
+        sys.exit("Not deploying: fix the load errors above first.")
+    print(f"✅ all {len(hb.HOSTED)} agents load like they will on Agentverse")
     failed = [k for k in specialists if not deploy(k)]
     # The hub learns the specialists' Agentverse addresses only after they exist, so it goes last.
     if "hub" in keys or specialists:
