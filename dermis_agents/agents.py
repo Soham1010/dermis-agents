@@ -19,7 +19,7 @@ from uagents_core.contrib.protocols.chat import (
     chat_protocol_spec,
 )
 
-from . import config, hub, specialist
+from . import brain, config, hub, specialist
 from .profiles import BY_KEY, PROFILES, Profile
 
 HUB_KEY = "hub"
@@ -32,6 +32,7 @@ class TouchQuery(Model):
     text: str
     parsed_json: str = "{}"
     brief: bool = False
+    agent: bool = False  # True: answer as the LLM agent (ask_agent); False: the structured report
 
 
 class TouchReport(Model):
@@ -91,7 +92,7 @@ def chat_protocol(answer) -> Protocol:
             return  # start-session or metadata only
         ctx.logger.info(f"chat from {sender[:16]}…: {text[:120]}")
         try:
-            reply = await answer(ctx, text)
+            reply = await answer(ctx, sender, text)
         except Exception as e:  # never leave ASI:One hanging
             ctx.logger.exception("answer failed")
             reply = f"Sorry, that request failed inside the agent: {e}"
@@ -133,16 +134,35 @@ def identity_of(key: str) -> tuple[str, str, str]:
     return p.name, p.title, profile_readme(p)
 
 
+async def converse(ctx: Context, sender: str, key: str, text: str, fallback, ask=None) -> str:
+    """LLM agent turn with this sender's recent history; the structured report if the LLM is down."""
+    storage_key = f"history:{sender}"
+    history = ctx.storage.get(storage_key) or []
+    answer = await brain.converse(key, text, history, ask)
+    if answer is None:
+        ctx.logger.warning("ASI:One unavailable; answering with the structured report")
+        answer = await fallback()
+    ctx.storage.set(storage_key, brain.remember(history, text, answer))
+    return answer
+
+
 def specialist_protocols(p: Profile) -> list[Protocol]:
-    async def answer(ctx: Context, text: str) -> str:
-        return (await specialist.respond(p, text))["markdown"]
+    async def answer(ctx: Context, sender: str, text: str) -> str:
+        async def report() -> str:
+            return (await specialist.respond(p, text))["markdown"]
+        return await converse(ctx, sender, p.key, text, report)
 
     internal = Protocol(name="dermis_touch", version="0.1.0")
 
     @internal.on_message(TouchQuery, replies=TouchReport)
     async def on_query(ctx: Context, sender: str, q: TouchQuery):
+        ctx.logger.info(f"{'agent question' if q.agent else 'query'} from {sender[:16]}…: {q.text[:100]}")
         try:
-            result = await specialist.respond(p, q.text, json.loads(q.parsed_json), q.brief)
+            if q.agent:
+                md = await brain.converse(p.key, q.text) or (await specialist.respond(p, q.text))["markdown"]
+                result = {"markdown": md, "score": None, "headline": "", "episode": None}
+            else:
+                result = await specialist.respond(p, q.text, json.loads(q.parsed_json), q.brief)
         except Exception as e:
             ctx.logger.exception("query failed")
             result = {"markdown": f"**{p.title}** failed: {e}", "score": None, "headline": str(e), "episode": None}
@@ -154,14 +174,17 @@ def specialist_protocols(p: Profile) -> list[Protocol]:
 def hub_protocols(addresses: dict[str, str]) -> list[Protocol]:
     """`addresses` maps specialist keys to agents to ask. Keys missing from it run inside the hub."""
 
-    async def answer(ctx: Context, text: str) -> str:
-        async def ask(key: str, q: str, parsed: dict, brief: bool) -> dict:
+    async def answer(ctx: Context, sender: str, text: str) -> str:
+        async def ask(key: str, q: str, parsed: dict, brief: bool, agent: bool = False) -> dict:
             if key not in addresses:  # not deployed as its own agent: same code, run here
+                if agent:
+                    md = await brain.converse(key, q) or (await specialist.respond(BY_KEY[key], q))["markdown"]
+                    return {"markdown": md}
                 return await specialist.respond(BY_KEY[key], q, parsed, brief)
             reason = ""
             try:
                 reply, status = await ctx.send_and_receive(
-                    addresses[key], TouchQuery(text=q, parsed_json=json.dumps(parsed), brief=brief),
+                    addresses[key], TouchQuery(text=q, parsed_json=json.dumps(parsed), brief=brief, agent=agent),
                     response_type=TouchReport, timeout=SPECIALIST_TIMEOUT_S,
                 )
                 if isinstance(reply, TouchReport):
@@ -177,7 +200,16 @@ def hub_protocols(addresses: dict[str, str]) -> list[Protocol]:
                                  "analysis directly._\n\n" + r["markdown"])
             return r
 
-        return await hub.respond(text, ask)
+        async def ask_agent(key: str, question: str) -> str:
+            if key not in BY_KEY:
+                return f"No agent called {key}."
+            r = await ask(key, question, {}, False, agent=True)
+            return f"**{BY_KEY[key].title}** answered:\n\n{r.get('markdown', '')}"
+
+        async def report() -> str:
+            return await hub.respond(text, ask)
+
+        return await converse(ctx, sender, "hub", text, report, ask_agent)
 
     return [chat_protocol(answer)]
 

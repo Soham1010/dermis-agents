@@ -35,6 +35,7 @@ HOSTED = ["hub", "visualizer", "data_explorer", "humanoid_arm", "industrial_arm"
 # renamed so it can't be confused with the package name.
 MODULES = {"config": "dermis_config", "profiles": "dermis_profiles", "store": "dermis_store",
            "analysis": "dermis_analysis", "charts": "dermis_charts", "llm": "dermis_llm", "viz": "dermis_viz",
+           "brain": "dermis_brain",
            "specialist": "dermis_specialist", "hub": "dermis_hub", "agents": "dermis_uagents"}
 
 AGENT_PY = '''"""{title} · Agentverse hosted agent.

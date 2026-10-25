@@ -125,7 +125,7 @@ def test_runtime_needs_no_numpy_or_pandas():
         "        if name.split('.')[0] in ('numpy', 'pandas'): raise ImportError('blocked ' + name)\n"
         "sys.meta_path.insert(0, Block())\n"
         "import asyncio\n"
-        "from dermis_agents import agents, hub, specialist, viz\n"
+        "from dermis_agents import agents, brain, hub, specialist, viz\n"
         "from dermis_agents.profiles import BY_KEY\n"
         "for k, q in [('visualizer', 'dashboard'), ('data_explorer', 'overview'), ('quadruped', 'episode 4')]:\n"
         "    r = asyncio.run(specialist.respond(BY_KEY[k], q, {}))\n"
@@ -135,3 +135,42 @@ def test_runtime_needs_no_numpy_or_pandas():
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
                          env={**__import__("os").environ, "DERMIS_CHARTS": "0", "ASI1_API_KEY": ""})
     assert out.stdout.strip() == "ok", out.stderr[-2000:]
+
+
+def test_agent_loop_uses_tools_and_restores_charts(monkeypatch):
+    from dermis_agents import brain, llm
+
+    script = iter([
+        {"content": "", "tool_calls": [{"id": "1", "function": {"name": "analyze_recording",
+                                                                "arguments": '{"episode": "episode_0004"}'}}]},
+        {"content": "It crushed the can.\n\n[[chart:1]]\n\nTurn SafeGrip on."},
+    ])
+    seen = []
+
+    async def fake_chat(messages, tools, max_tokens=1200):
+        seen.append(messages[-1])
+        return next(script)
+
+    monkeypatch.setattr(llm, "chat", fake_chat)
+    monkeypatch.setattr(brain.charts.config, "CHARTS", True)
+    answer = run(brain.converse("humanoid_arm", "why did episode 4 fail?"))
+    tool_result = seen[1]["content"]
+    assert seen[1]["role"] == "tool" and '"outcome": "fracture"' in tool_result
+    assert "quickchart" not in tool_result and "[[chart:1]]" in tool_result  # model never sees the URL
+    assert answer.startswith("It crushed the can.") and "quickchart.io" in answer
+
+
+def test_agent_returns_none_without_llm(monkeypatch):
+    from dermis_agents import brain, llm
+
+    async def down(*a, **k):
+        return None
+
+    monkeypatch.setattr(llm, "chat", down)
+    assert run(brain.converse("hub", "hello")) is None  # caller falls back to the structured report
+
+
+def test_memory_drops_chart_urls():
+    from dermis_agents import brain
+    h = brain.remember([], "q", "answer\n\n![c](https://quickchart.io/chart?c=" + "x" * 5000 + ")")
+    assert "quickchart" not in h[-1]["content"] and len(h) == 2

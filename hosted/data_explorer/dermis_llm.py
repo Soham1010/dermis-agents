@@ -45,6 +45,26 @@ async def complete(system: str, user: str, json_mode: bool = False, max_tokens: 
         return None
 
 
+async def chat(messages: list[dict], tools: list[dict], max_tokens: int = 1200) -> dict | None:
+    """One tool-calling turn. Returns the assistant message (content and/or tool_calls), or None."""
+    if not config.ASI1_API_KEY:
+        return None
+    body = {"model": config.ASI1_AGENT_MODEL, "messages": messages, "tools": tools,
+            "temperature": 0.3, "max_tokens": max_tokens}
+    try:
+        async with httpx.AsyncClient(timeout=45) as client:
+            r = await client.post(
+                f"{config.ASI1_BASE_URL}/chat/completions",
+                headers={"Authorization": f"Bearer {config.ASI1_API_KEY}"},
+                json=body,
+            )
+            r.raise_for_status()
+            return r.json()["choices"][0]["message"]
+    except (httpx.HTTPError, KeyError, IndexError, ValueError) as e:
+        log.warning("ASI:One agent call failed: %s", e)
+        return None
+
+
 def _json(text: str | None) -> dict:
     if not text:
         return {}

@@ -58,8 +58,13 @@ agents (which have no pandas and can't ship 222 MB of recordings).
   touch-onset latency against true contact, slip-band vibration (high-passed field energy),
   magnetometer rail, robust noise against the MLX90393 spec, dropped frames and friction margin. It
   also finds the SafeGrip on/off twin of the same run to show what would have changed.
-- **The LLM (ASI:One `asi1-mini`) only parses requests, routes them and writes the interpretation**
-  from the computed facts. It is told never to add numbers. Without `ASI1_API_KEY`, rules take over.
+- **Every agent is an ASI:One LLM agent with tools** (`dermis_agents/brain.py`). The `asi1` model holds the
+  conversation (it remembers the last turns per user), decides what to look up, and calls tools that run
+  the real analysis: list recordings, analyze one, fleet stats, compare all applications, sensor health,
+  dataset overview, charts and tables. The hub also has `ask_agent`, which messages a specialist agent
+  over uAgents and folds its answer in. The model is told to take every number from a tool. Charts reach
+  the model as `[[chart:N]]` tokens and are swapped back in afterwards. If ASI:One is unreachable, the
+  agent answers with the structured report instead.
 - **Charts** are QuickChart image URLs, so they render inline in ASI:One. The chart URL contains
   the downsampled force series. Set `DERMIS_CHARTS=0` to leave the charts out.
 - **The profiles** in `dermis_agents/profiles.py` set each domain's force safety factor, friction

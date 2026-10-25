@@ -36,6 +36,8 @@ SPACETIME_FRAME_TABLE = os.getenv("SPACETIME_FRAME_TABLE", "frame")
 ASI1_API_KEY = os.getenv("ASI1_API_KEY", "")
 ASI1_BASE_URL = os.getenv("ASI1_BASE_URL", "https://api.asi1.ai/v1").rstrip("/")
 ASI1_MODEL = os.getenv("ASI1_MODEL", "asi1-mini")
+# The model that runs the agents' tool-calling conversations (asi1 is Fetch's agentic default).
+ASI1_AGENT_MODEL = os.getenv("ASI1_AGENT_MODEL", "asi1")
 
 # Agent identity. Seeds derive the agents' addresses, so keep AGENT_SEED_SECRET private and stable.
 AGENT_SEED_SECRET = os.getenv("AGENT_SEED_SECRET", "")
