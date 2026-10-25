@@ -39,12 +39,18 @@ Print the addresses with `python run.py --addresses`. They are derived from `AGE
 ## How it works
 
 ```
-ASI:One ──ACP──▶ Dermis Hub ──TouchQuery──▶ 10 specialists (parallel) ──TouchReport──▶ Hub ──▶ ASI:One
-                   │                              │
-                   │ ASI:One LLM: parse + route   └─ data.py: SpacetimeDB, else local dataset
-                   │ (rule-based fallback)           analysis.py: numpy on the 350 Hz frames
-                   └─ if a specialist is down, the hub runs its analysis itself and says so
+ SpacetimeDB / local 350 Hz recordings
+        │  python -m dermis_agents.snapshot   (numpy, build time: features.py)
+        ▼
+ snapshot/dermis_snapshot.json  ── public URL ──┐  every recording analysed once: facts, chart series,
+                                                 │  calibration fits, sample rows (2.3 MB, 0.3 MB gzipped)
+ASI:One ──ACP──▶ Dermis Hub ──TouchQuery──▶ specialists (parallel) ──TouchReport──▶ Hub ──▶ ASI:One
+                   │ ASI:One LLM: parse + route (rule-based fallback)
+                   └─ a specialist that isn't deployed, or doesn't answer, runs inside the hub
 ```
+
+The agents never touch raw frames at runtime, so the same code runs locally and as Agentverse-hosted
+agents (which have no pandas and can't ship 222 MB of recordings).
 
 - **Every agent speaks the Agent Chat Protocol**, so each one is usable on its own from ASI:One,
   not only through the hub.
@@ -77,13 +83,26 @@ cp .env.example .env                       # optional: SpacetimeDB, ASI1_API_KEY
 .venv/bin/python ask.py "which items do we drop most in the warehouse?"   # terminal 2
 .venv/bin/python ask.py --to sensor_qa "sensor health check across the fleet"
 
-# 3. Live on Agentverse / ASI:One
+# 3. Mailbox agents on Agentverse, running on this machine
 DERMIS_MAILBOX=1 .venv/bin/python run.py
-#    first run: open each printed inspector link → Connect → Mailbox
-#    then find "Dermis Hub" on agentverse.ai or ASI:One (asi1.ai) and chat
+.venv/bin/python connect.py                # connects mailboxes (AGENTVERSE_API_KEY in .env)
 
 .venv/bin/python -m pytest -q tests
 ```
+
+### Hosted on Agentverse (always on, no machine needed)
+
+```bash
+.venv/bin/python -m dermis_agents.snapshot      # after data changes; commit + push the snapshot
+avctl auth login                                 # once, in the browser
+.venv/bin/python tools/deploy_hosted.py          # builds hosted/<agent>/ and deploys all 8
+```
+
+`tools/build_hosted.py` turns the package into one folder per hosted agent (same modules, imports
+flattened). Free accounts hold 8 agents, so the hosted set is the hub, Visualizer, Data Explorer,
+humanoid arm, industrial arm, quadruped, warehouse and sensor health; the other specialists answer
+through the hub. Hosted agents read the snapshot from
+`https://raw.githubusercontent.com/Soham1010/dermis-agents/main/snapshot/dermis_snapshot.json`.
 
 Questions to try in ASI:One:
 
@@ -100,8 +119,9 @@ Questions to try in ASI:One:
 
 ## SpacetimeDB contract
 
-`data.py` reads over SpacetimeDB's HTTP SQL API (`POST /v1/database/{db}/sql`). It uses the local
-dataset whenever `SPACETIME_DB` is unset or the query fails, and the reply says which source it used.
+`data.py` reads over SpacetimeDB's HTTP SQL API (`POST /v1/database/{db}/sql`) when the snapshot is
+built. It uses the local dataset whenever `SPACETIME_DB` is unset or the query fails, and the snapshot
+records which source it came from.
 
 | Table | Columns |
 |---|---|
@@ -124,15 +144,21 @@ mapped to feet until quadruped data exists, and it says so.
 ```
 dermis_agents/
   profiles.py    the 13 agents' domains, limits and keywords
-  data.py        SpacetimeDB + local dataset, same shapes
-  analysis.py    numpy analysis, per-profile evaluation, fleet stats, SafeGrip twin
+  data.py        SpacetimeDB + local dataset, same shapes (build time)
+  features.py    numpy feature extraction from raw frames (build time)
+  snapshot.py    builds snapshot/dermis_snapshot.json
+  store.py       loads the snapshot from a file or URL (runtime)
+  analysis.py    per-profile evaluation, fleet stats, SafeGrip twin (pure Python)
   specialist.py  episode / fleet / sensor-scan / data-curation reports
   hub.py         routing, fan-out, cross-application matrix
   llm.py         ASI:One LLM client with rule fallbacks
-  viz.py         Data Explorer (pandas tables) and Visualizer (chart picker)
+  viz.py         Data Explorer (tables) and Visualizer (chart picker), pure Python
   charts.py      QuickChart URLs + text sparklines
   agents.py      uAgents: Chat Protocol, internal TouchQuery protocol, recovery
 run.py           starts one process per agent (local or mailbox)
+connect.py       connects/disconnects mailbox agents on Agentverse
+tools/           build_hosted.py + deploy_hosted.py for Agentverse-hosted agents
+hosted/          generated hosted agents (don't edit; rebuild)
 ask.py           Chat Protocol test client
 examples/        the original two-agent starter
 ```
