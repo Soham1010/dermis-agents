@@ -1,0 +1,6 @@
+[agent]
+  address = ""
+  include = ""
+  readme_path = "README.md"
+  description = "pandas-style tables over Dermis recordings: describe, crosstab, pivot and group-by, with the pandas expression behind each table"
+  starter_prompts = ["Show the dataset overview", "Peak force by object and scenario", "Latency by safe grip", "Table stats for episode 4"]

@@ -1,0 +1,6 @@
+[agent]
+  address = ""
+  include = ""
+  readme_path = "README.md"
+  description = "legged robots (robot dogs) sensing foot contact, foot slip and touchdown impact"
+  starter_prompts = ["Check slip detection for the robot dog", "Quadruped view of episode_0105"]

@@ -1,0 +1,137 @@
+import asyncio
+import os
+
+os.environ["DERMIS_CHARTS"] = "0"
+os.environ["ASI1_API_KEY"] = ""
+
+from dermis_agents import agents, analysis, hub, specialist  # noqa: E402
+from dermis_agents.store import snapshot  # noqa: E402
+from dermis_agents.profiles import BY_KEY, PROFILES  # noqa: E402
+
+
+def run(coro):
+    return asyncio.run(coro)
+
+
+async def local_ask(key, text, parsed, brief):
+    return await specialist.respond(BY_KEY[key], text, parsed, brief)
+
+
+def facts_for(eid):
+    return snapshot().facts(eid)
+
+
+def test_noise_matches_sensor_spec():
+    f = facts_for("episode_0000")
+    for pod in f["pods"].values():
+        assert pod["noise_vs_spec"] < 2  # sim noise is generated at spec
+
+
+def test_touch_latency_is_against_true_force():
+    f = facts_for("episode_0000")
+    assert abs(f["touch_detect_latency_ms"]) < 30
+
+
+def test_fracture_episode_is_critical_for_humanoid_not_quadruped():
+    f = facts_for("episode_0004")
+    hum = analysis.evaluate(BY_KEY["humanoid_arm"], f)
+    quad = analysis.evaluate(BY_KEY["quadruped"], f)
+    assert hum[0]["severity"] == "critical"
+    assert not any(x["severity"] == "critical" for x in quad)
+
+
+def test_sensor_agent_ignores_grip_failures():
+    f = facts_for("episode_0004")
+    assert all(x["check"] in ("sensor", "timing") for x in analysis.evaluate(BY_KEY["sensor_qa"], f))
+
+
+def test_counterfactual_finds_safegrip_twin():
+    eps = snapshot().episodes
+    meta = next(e for e in eps if e["episode"] == "episode_0004")
+    twin = analysis.counterfactual(meta, eps)
+    assert twin["safe_grip"] != meta["safe_grip"] and twin["object"] == meta["object"]
+
+
+def test_routing():
+    assert hub.keyword_route("robot dog foot slip")[0] == "quadruped"
+    assert hub.keyword_route("warehouse picking drops")[0] == "warehouse"
+    assert run(hub.choose("compare all applications on episode 4")) == ["all"]
+
+
+def test_episode_report_end_to_end():
+    r = run(specialist.respond(BY_KEY["humanoid_arm"], "analyze episode 4"))
+    assert r["episode"] == "episode_0004" and r["score"] < 50
+    assert "What-if: SafeGrip on" in r["markdown"]
+
+
+def test_unknown_episode_is_reported_not_raised():
+    r = run(specialist.respond(BY_KEY["humanoid_arm"], "analyze episode 9999"))
+    assert "don't have" in r["markdown"]
+
+
+def test_matrix_covers_every_judging_profile():
+    md = run(hub.respond("compare all applications on episode 4", local_ask))
+    for p in PROFILES:
+        assert (p.title in md) == p.in_matrix
+
+
+def test_fleet_reports():
+    for key in ("warehouse", "data_curator", "industrial_arm"):
+        r = run(specialist.respond(BY_KEY[key], "fleet summary"))
+        assert r["markdown"].startswith("## ")
+
+
+def test_addresses_are_stable_and_distinct():
+    addrs = [agents.address_for(k) for k in agents.all_keys()]
+    assert len(set(addrs)) == len(addrs) == 14
+    asyncio.set_event_loop(asyncio.new_event_loop())  # Agent() needs a loop; asyncio.run closed ours
+    assert agents.build("quadruped").address == agents.address_for("quadruped")
+
+
+def test_routing_to_viz_agents():
+    assert hub.keyword_route("plot a histogram of peak force")[0] == "visualizer"
+    assert hub.keyword_route("pivot table of outcomes")[0] == "data_explorer"
+
+
+def test_explorer_tables():
+    r = run(specialist.respond(BY_KEY["data_explorer"], "overview", {}))
+    assert "pd.crosstab" in r["markdown"] and "| can |" in r["markdown"]
+    r = run(specialist.respond(BY_KEY["data_explorer"], "success by scenario", {}))
+    assert "| drop |" in r["markdown"]
+    r = run(specialist.respond(BY_KEY["data_explorer"], "stats for episode 4", {"episode": "episode_0004"}))
+    assert "calibration" in r["markdown"]
+
+
+def test_visualizer_picks_chart_type():
+    from dermis_agents import viz
+    assert viz.chart_kind("scatter latency vs mass") == "scatter"
+    assert viz.chart_kind("peak force vs mass") == "scatter"
+    assert viz.chart_kind("compare episode 4 vs episode 0") == "compare"
+    assert viz.chart_kind("heatmap of success") == "heatmap"
+    for q in ("dashboard", "plot episode 4", "compare episode 4 with safegrip on", "pie of outcomes",
+              "heatmap", "radar of episode 40", "plot the raw field for episode 4"):
+        r = run(specialist.respond(BY_KEY["visualizer"], q, {}))
+        assert r["markdown"].startswith("## Visualizer ·"), q
+
+
+def test_runtime_needs_no_numpy_or_pandas():
+    """Hosted Agentverse agents have no pandas; keep every runtime module free of numpy too."""
+    import subprocess
+    import sys
+    code = (
+        "import sys\n"
+        "class Block:\n"
+        "    def find_spec(self, name, *a):\n"
+        "        if name.split('.')[0] in ('numpy', 'pandas'): raise ImportError('blocked ' + name)\n"
+        "sys.meta_path.insert(0, Block())\n"
+        "import asyncio\n"
+        "from dermis_agents import agents, hub, specialist, viz\n"
+        "from dermis_agents.profiles import BY_KEY\n"
+        "for k, q in [('visualizer', 'dashboard'), ('data_explorer', 'overview'), ('quadruped', 'episode 4')]:\n"
+        "    r = asyncio.run(specialist.respond(BY_KEY[k], q, {}))\n"
+        "    assert r['markdown'].startswith('## '), (k, r['markdown'][:200])\n"
+        "print('ok')\n"
+    )
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
+                         env={**__import__("os").environ, "DERMIS_CHARTS": "0", "ASI1_API_KEY": ""})
+    assert out.stdout.strip() == "ok", out.stderr[-2000:]

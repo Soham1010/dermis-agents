@@ -1,0 +1,6 @@
+[agent]
+  address = ""
+  include = ""
+  readme_path = "README.md"
+  description = "dexterous humanoid hands and arms doing general household manipulation"
+  starter_prompts = ["Analyze episode_0040 for a humanoid arm", "How stable is the humanoid grasp on the egg?"]
