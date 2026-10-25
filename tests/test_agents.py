@@ -125,7 +125,7 @@ def test_runtime_needs_no_numpy_or_pandas():
         "        if name.split('.')[0] in ('numpy', 'pandas'): raise ImportError('blocked ' + name)\n"
         "sys.meta_path.insert(0, Block())\n"
         "import asyncio\n"
-        "from dermis_agents import agents, brain, hub, specialist, viz\n"
+        "from dermis_agents import agents, brain, cards, connectors, dataset, hub, payments, specialist, viz\n"
         "from dermis_agents.profiles import BY_KEY\n"
         "for k, q in [('visualizer', 'dashboard'), ('data_explorer', 'overview'), ('quadruped', 'episode 4')]:\n"
         "    r = asyncio.run(specialist.respond(BY_KEY[k], q, {}))\n"
@@ -153,7 +153,9 @@ def test_agent_loop_uses_tools_and_restores_charts(monkeypatch):
 
     monkeypatch.setattr(llm, "chat", fake_chat)
     monkeypatch.setattr(brain.charts.config, "CHARTS", True)
-    answer = run(brain.converse("humanoid_arm", "why did episode 4 fail?"))
+    result = run(brain.converse("humanoid_arm", "why did episode 4 fail?"))
+    answer = result["text"]
+    assert result["card"]["kind"] == "detail"  # analyze_recording attaches a detail card
     tool_result = seen[1]["content"]
     assert seen[1]["role"] == "tool" and '"outcome": "fracture"' in tool_result
     assert "quickchart" not in tool_result and "[[chart:1]]" in tool_result  # model never sees the URL
@@ -174,3 +176,74 @@ def test_memory_drops_chart_urls():
     from dermis_agents import brain
     h = brain.remember([], "q", "answer\n\n![c](https://quickchart.io/chart?c=" + "x" * 5000 + ")")
     assert "quickchart" not in h[-1]["content"] and len(h) == 2
+
+
+def test_generic_dataset_engine():
+    from dermis_agents import dataset as D
+    t = D.parse("city,temp,rain\nA,20,1\nB,25,0\nA,22,3\nC,,2", "weather")
+    assert t.types == {"city": "text", "temp": "number", "rain": "number"}
+    g = t.query(group_by=["city"], metrics=[{"column": "rain", "agg": "sum"}], sort_by="sum_rain")
+    assert g["rows"][0] == {"city": "A", "sum_rain": 4}
+    assert t.query(filters=[{"column": "temp", "op": ">", "value": 21}])["matched_rows"] == 2
+    assert D.parse('[{"a": 1, "b": {"c": 2}}, {"a": 3, "b": {"c": 4}}]', "j").columns == ["a", "b.c"]
+    assert len(D.load("dermis").rows) == 192
+
+
+def test_pasted_table_becomes_active_dataset():
+    from dermis_agents import brain
+    session = {}
+    msg = brain.attach_inline_dataset("which team scores most?\nteam,goals\nRed,3\nBlue,5\nRed,4", session)
+    assert session["dataset"]["source"] == "pasted" and "3 rows" in msg and msg.startswith("which team")
+    session = {}
+    brain.attach_inline_dataset("analyze https://example.com/data/sales.csv please", session)
+    assert session["dataset"]["source"] == "https://example.com/data/sales.csv"
+
+
+def test_chart_dataset_tool():
+    from dermis_agents import brain
+    turn = brain.Turn("data_explorer", {"dataset": {"source": "pasted", "text": "k,v\na,1\nb,2\na,5"}})
+    out = brain.t_chart_dataset({"kind": "bar", "x": "k", "y": "v", "agg": "sum"}, turn)
+    assert out["rows"][0] == {"k": "a", "sum_v": 6} and "chart" in out
+
+
+class _Tx:
+    def __init__(self, ok, transfer):
+        self._ok, self.events = ok, {"transfer": transfer}
+
+    def is_successful(self):
+        return self._ok
+
+
+def _ledger(tx):
+    class L:
+        def query_tx(self, h):
+            return tx
+    return lambda: L()
+
+
+def test_payment_verification():
+    from dermis_agents import payments as P
+    good = {"recipient": "fetch1me", "sender": "fetch1buyer", "amount": f"{10**17}{P.DENOM}"}
+    assert P.verify_payment("tx", "0.1", "fetch1me", "fetch1buyer", _ledger(_Tx(True, good)))[0]
+    assert P.verify_payment("tx", "0.1", "fetch1me", None, _ledger(_Tx(True, good)))[0]
+    assert not P.verify_payment("tx", "0.1", "fetch1other", None, _ledger(_Tx(True, good)))[0]
+    assert not P.verify_payment("tx", "0.1", "fetch1me", None, _ledger(_Tx(False, good)))[0]
+    low = {**good, "amount": f"{10**16}{P.DENOM}"}
+    assert "price" in P.verify_payment("tx", "0.1", "fetch1me", None, _ledger(_Tx(True, low)))[1]
+
+
+def test_cards_and_selections():
+    from dermis_agents import brain, cards
+    a = brain.t_analyze_recording({"episode": "episode_4"}, "humanoid_arm")
+    card = cards.recording_card(a, "0.1")
+    meta = cards.content(card).metadata
+    assert meta["card_kind"] == "detail" and meta["card_protocol_version"] == "1"
+    assert cards.content(cards.start_form()).metadata["card_kind"] == "form"
+    assert cards.parse_selection('{"action": "confirm_purchase", "episode": "episode_0004"}')["episode"] == "episode_0004"
+    assert cards.parse_selection("User chose confirm_purchase for episode_0004")["action"] == "confirm_purchase"
+    assert cards.parse_selection("what is a friction cone?") is None
+
+
+def test_certified_report_contents():
+    md = specialist.certified_report("episode_0004", "0.1 FET · tx T · stable-testnet")
+    assert "Passes 2 of 10 applications" in md and "tx T" in md and '"verdicts"' in md

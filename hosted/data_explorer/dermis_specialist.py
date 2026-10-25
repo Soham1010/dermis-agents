@@ -301,3 +301,72 @@ def curator_report(p: Profile) -> dict:
     lines += [f"{i}. {s}" for i, s in enumerate(steps, 1)]
     head = f"{len(episodes)} episodes; rare classes: {', '.join(k for k, _ in rare) or 'none'}"
     return {"markdown": "\n".join(lines), "score": None, "headline": head, "episode": None}
+
+
+def certified_report(episode: str, receipt: str) -> str:
+    """The paid product: one recording judged for every application, with evidence and a fix list."""
+    import json as _json
+    from datetime import datetime, timezone
+
+    from dermis_profiles import PROFILES
+
+    snap = snapshot()
+    meta = snap.meta(episode)
+    if meta is None:
+        return f"I couldn't find {episode} to certify. Your payment receipt: {receipt}"
+    f = snap.facts(episode)
+    rows, verdicts, fixes = [], {}, []
+    for p in PROFILES:
+        if not p.in_matrix:
+            continue
+        fs = analysis.evaluate(p, f)
+        s = analysis.score(fs)
+        verdict = "PASS" if s >= 80 else "CONDITIONAL" if s >= 50 else "FAIL"
+        verdicts[p.key] = {"score": s, "verdict": verdict}
+        crit = [x for x in fs if x["severity"] == "critical"]
+        rows.append(f"| {p.title.replace(' Agent', '')} | **{s}** | {verdict} | "
+                    f"{(crit or fs or [{'message': 'no issues'}])[0]['message']} |")
+        for x in fs:
+            if x["action"] and x["action"] not in fixes and x["severity"] != "info":
+                fixes.append(x["action"])
+    twin = analysis.counterfactual(meta, snap.episodes)
+    obj_fleet = analysis.fleet(snap.episodes, (meta["object"],))["by_object"].get(meta["object"], {})
+    pod, peak = analysis.peak_force(f)
+    passes = sum(v["verdict"] == "PASS" for v in verdicts.values())
+    issued = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    summary = {"episode": episode, "object": meta["object"], "scenario": meta["scenario"],
+               "safe_grip": meta["safe_grip"], "outcome": meta["outcome"], "verdicts": verdicts,
+               "peak_force_n": peak, "issued": issued, "receipt": receipt, "data": snap.label}
+    lines = [
+        f"## Dermis certified readiness report · {episode}",
+        f"**{meta['object']}** ({meta['mass_g']} g) · `{meta['scenario']}` · SafeGrip {'on' if meta['safe_grip'] else 'off'} · "
+        f"outcome **{meta['outcome']}** · issued {issued}",
+        "",
+        f"**Passes {passes} of {len(verdicts)} applications.** Peak force {peak:.1f} N on the "
+        f"{pod.replace('_', ' ') if pod else 'n/a'}; "
+        + (f"fault: {f['fault'].replace('_', ' ')} at {f['fault_at_s']} s." if f.get("fault") else "no fault."),
+        "",
+        charts.score_chart([(p.title.replace(" Agent", ""), verdicts[p.key]["score"]) for p in PROFILES if p.in_matrix],
+                           f"Readiness by application · {episode}"),
+        "",
+        "| Application | Score | Verdict | Deciding finding |", "|---|---|---|---|", *rows, "",
+        "### Evidence",
+        f"- Touch detected {f.get('touch_detect_latency_ms')} ms vs true contact; stable hold at {f.get('time_to_hold_s')} s; "
+        f"min friction margin {f.get('min_friction_margin')}.",
+        f"- Sensor health: {sum(v['rail_frames'] for v in f['pods'].values())} saturated frames, worst noise "
+        f"{max(v['noise_vs_spec'] for v in f['pods'].values())}x spec, {f['dropped_frames']} dropped frames.",
+    ]
+    if twin:
+        lines.append(f"- SafeGrip what-if: the same run with SafeGrip {'on' if twin['safe_grip'] else 'off'} "
+                     f"({twin['episode']}) ended in **{twin['outcome']}**.")
+    if obj_fleet:
+        sg = obj_fleet.get("success_safegrip")
+        nosg = obj_fleet.get("success_no_safegrip")
+        lines.append(f"- Fleet context for {meta['object']}: {obj_fleet['n']} runs, success "
+                     f"{'–' if sg is None else f'{sg * 100:.0f}%'} with SafeGrip vs "
+                     f"{'–' if nosg is None else f'{nosg * 100:.0f}%'} without.")
+    lines += ["", "### Fix list, in priority order"] + [f"{i}. {x}" for i, x in enumerate(fixes[:6], 1)] or ["1. None needed."]
+    lines += ["", f"_Receipt: {receipt}. Data: {snap.label} (simulated recordings; forces are simulated ground "
+                  "truth, not a hardware measurement)._", "",
+              "```json", _json.dumps(summary, indent=1), "```"]
+    return "\n".join(lines)

@@ -231,14 +231,17 @@ PROFILES: list[Profile] = [
     Profile(
         key="data_explorer",
         name="dermis_data_explorer",
-        title="Data Explorer Agent",
-        domain="pandas-style tables over Dermis recordings: describe, crosstab, pivot and group-by, "
-               "with the pandas expression behind each table",
-        priorities=("tables you can paste", "group-by breakdowns", "per-episode statistics"),
+        title="Data Analyst Agent",
+        domain="analysis of any dataset you bring (CSV, TSV, JSON or JSON lines by URL or pasted into the chat) "
+               "and of the Dermis recordings: describe, filter, group, pivot, computed columns, correlations, charts",
+        priorities=("correct numbers from the data", "the table or chart that answers the question",
+                    "the reproducible pandas expression"),
         keywords=("table", "tables", "pivot", "crosstab", "groupby", "group by", "describe", "stats",
-                  "statistics", "breakdown", "columns", "rows", "pandas", "dataframe", "spreadsheet", "explore"),
-        examples=("Show the dataset overview", "Peak force by object and scenario",
-                  "Latency by safe grip", "Table stats for episode 4"),
+                  "statistics", "breakdown", "columns", "rows", "pandas", "dataframe", "spreadsheet", "explore",
+                  "csv", "json", "dataset", "my data", "analyze this", "correlation"),
+        examples=("Analyze https://raw.githubusercontent.com/mwaskom/seaborn-data/master/tips.csv",
+                  "Paste a CSV and ask a question about it", "Peak force by object and scenario",
+                  "Which columns correlate most?"),
         checks=(), critical_faults=(), in_matrix=False, kind="explorer",
     ),
     Profile(

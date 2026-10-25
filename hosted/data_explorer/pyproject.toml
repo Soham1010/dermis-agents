@@ -1,7 +1,7 @@
 [project]
 name = "dermis-data-explorer"
 version = "0.2.0"
-description = "Data Explorer Agent"
+description = "Data Analyst Agent"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
 dependencies = [

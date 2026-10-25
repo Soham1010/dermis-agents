@@ -7,7 +7,9 @@ that specialist's analysis itself, so a dead agent degrades the answer instead o
 
 from __future__ import annotations
 
+import asyncio
 import json
+import re
 import secrets
 from uagents import Agent, Context, Model, Protocol
 from uagents_core.identity import Identity
@@ -19,10 +21,11 @@ from uagents_core.contrib.protocols.chat import (
     chat_protocol_spec,
 )
 
-import dermis_brain as brain, dermis_config as config, dermis_hub as hub, dermis_specialist as specialist
+import dermis_brain as brain, dermis_cards as cards, dermis_config as config, dermis_hub as hub, dermis_payments as payments, dermis_specialist as specialist
 from dermis_profiles import BY_KEY, PROFILES, Profile
 
 HUB_KEY = "hub"
+GREETING = re.compile(r"^\s*(hi|hello|hey|yo|help|start|get started|what can you do|menu)\b[\s!?.]*$", re.I)
 SPECIALIST_TIMEOUT_S = 30
 BADGES = ("![tag:innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3)\n"
           "![tag:hackathon](https://img.shields.io/badge/hackathon-5F43F1)")
@@ -96,10 +99,16 @@ def chat_protocol(answer) -> Protocol:
         except Exception as e:  # never leave ASI:One hanging
             ctx.logger.exception("answer failed")
             reply = f"Sorry, that request failed inside the agent: {e}"
-        await ctx.send(sender, ChatMessage(content=[
-            TextContent(type="text", text=reply),
-            EndSessionContent(type="end-session"),
-        ]))
+        reply = reply if isinstance(reply, dict) else {"text": reply}
+        content = [TextContent(type="text", text=reply["text"])]
+        if reply.get("card"):
+            try:
+                content.append(cards.content(reply["card"]))
+            except ValueError:
+                ctx.logger.warning("card too large; sending text only")
+        if len(content) == 1:  # a card waits for a button press, so only plain answers end the session
+            content.append(EndSessionContent(type="end-session"))
+        await ctx.send(sender, ChatMessage(content=content))
 
     @proto.on_message(ChatAcknowledgement)
     async def on_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
@@ -134,16 +143,38 @@ def identity_of(key: str) -> tuple[str, str, str]:
     return p.name, p.title, profile_readme(p)
 
 
-async def converse(ctx: Context, sender: str, key: str, text: str, fallback, ask=None) -> str:
-    """LLM agent turn with this sender's recent history; the structured report if the LLM is down."""
-    storage_key = f"history:{sender}"
-    history = ctx.storage.get(storage_key) or []
-    answer = await brain.converse(key, text, history, ask)
-    if answer is None:
+async def converse(ctx: Context, sender: str, key: str, text: str, fallback, ask=None) -> dict:
+    """LLM agent turn with this sender's history and session; the structured report if the LLM is down."""
+    if key == HUB_KEY:
+        sel = cards.parse_selection(text)
+        if sel and sel["action"] in ("confirm_purchase", "cancel_purchase"):
+            return await purchase_step(ctx, sender, sel)
+    history = ctx.storage.get(f"history:{sender}") or []
+    session = ctx.storage.get(f"session:{sender}") or {}
+    result = await brain.converse(key, text, history, ask, session)
+    if result is None:
         ctx.logger.warning("ASI:One unavailable; answering with the structured report")
-        answer = await fallback()
-    ctx.storage.set(storage_key, brain.remember(history, text, answer))
-    return answer
+        result = {"text": await fallback(), "card": None, "purchase": None}
+    if result.get("purchase") and key == HUB_KEY:
+        result["card"] = cards.purchase_review(result["purchase"], payments.PRICE_FET, payments.NETWORK)
+    elif key == HUB_KEY and not result.get("card") and GREETING.match(text):
+        result["card"] = cards.start_form()  # first impressions shouldn't depend on the model's mood
+    ctx.storage.set(f"history:{sender}", brain.remember(history, text, result["text"]))
+    ctx.storage.set(f"session:{sender}", session)
+    return result
+
+
+async def purchase_step(ctx: Context, sender: str, sel: dict) -> dict:
+    """Pay / Not now on the review card. Handled without the LLM: money paths stay deterministic."""
+    episode = sel.get("episode")
+    if sel["action"] == "cancel_purchase":
+        return {"text": "No problem, nothing was charged. Ask me anything else."}
+    if not episode:
+        return {"text": "Which recording should the certified report cover? (e.g. episode 4)"}
+    if not await payments.request_payment(ctx, sender, episode):
+        return {"text": "Payments aren't available on this agent right now (no wallet). Everything else still works."}
+    return {"text": f"Payment request sent: {payments.PRICE_FET} FET on {payments.NETWORK} for the certified report on "
+                    f"{episode}. Approve it in your wallet; I verify the transaction on-chain and send the report."}
 
 
 def specialist_protocols(p: Profile) -> list[Protocol]:
@@ -159,7 +190,8 @@ def specialist_protocols(p: Profile) -> list[Protocol]:
         ctx.logger.info(f"{'agent question' if q.agent else 'query'} from {sender[:16]}…: {q.text[:100]}")
         try:
             if q.agent:
-                md = await brain.converse(p.key, q.text) or (await specialist.respond(p, q.text))["markdown"]
+                r = await brain.converse(p.key, q.text)
+                md = r["text"] if r else (await specialist.respond(p, q.text))["markdown"]
                 result = {"markdown": md, "score": None, "headline": "", "episode": None}
             else:
                 result = await specialist.respond(p, q.text, json.loads(q.parsed_json), q.brief)
@@ -178,8 +210,8 @@ def hub_protocols(addresses: dict[str, str]) -> list[Protocol]:
         async def ask(key: str, q: str, parsed: dict, brief: bool, agent: bool = False) -> dict:
             if key not in addresses:  # not deployed as its own agent: same code, run here
                 if agent:
-                    md = await brain.converse(key, q) or (await specialist.respond(BY_KEY[key], q))["markdown"]
-                    return {"markdown": md}
+                    r = await brain.converse(key, q)
+                    return {"markdown": r["text"] if r else (await specialist.respond(BY_KEY[key], q))["markdown"]}
                 return await specialist.respond(BY_KEY[key], q, parsed, brief)
             reason = ""
             try:
@@ -209,9 +241,12 @@ def hub_protocols(addresses: dict[str, str]) -> list[Protocol]:
         async def report() -> str:
             return await hub.respond(text, ask)
 
-        return await converse(ctx, sender, "hub", text, report, ask_agent)
+        return await converse(ctx, sender, HUB_KEY, text, report, ask_agent)
 
-    return [chat_protocol(answer)]
+    async def deliver(episode: str, receipt: str) -> str:
+        return await asyncio.to_thread(specialist.certified_report, episode, receipt)
+
+    return [chat_protocol(answer), payments.payment_protocol(deliver)]
 
 
 def protocols_for(key: str, addresses: dict[str, str] | None = None) -> list[Protocol]:
@@ -241,6 +276,8 @@ def all_keys() -> list[str]:
 def build(key: str) -> Agent:
     """A local agent (run.py). Locally every specialist runs as its own agent, so the hub asks them all."""
     agent = make_agent(key)
+    if key == HUB_KEY:
+        payments.set_wallet(agent.wallet)
     addresses = {p.key: address_for(p.key) for p in PROFILES} if key == HUB_KEY else None
     for proto in protocols_for(key, addresses):
         agent.include(proto, publish_manifest=True)

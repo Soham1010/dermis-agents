@@ -35,7 +35,8 @@ HOSTED = ["hub", "visualizer", "data_explorer", "humanoid_arm", "industrial_arm"
 # renamed so it can't be confused with the package name.
 MODULES = {"config": "dermis_config", "profiles": "dermis_profiles", "store": "dermis_store",
            "analysis": "dermis_analysis", "charts": "dermis_charts", "llm": "dermis_llm", "viz": "dermis_viz",
-           "brain": "dermis_brain",
+           "brain": "dermis_brain", "dataset": "dermis_dataset", "connectors": "dermis_connectors",
+           "cards": "dermis_cards", "payments": "dermis_payments",
            "specialist": "dermis_specialist", "hub": "dermis_hub", "agents": "dermis_uagents"}
 
 AGENT_PY = '''"""{title} · Agentverse hosted agent.
@@ -49,6 +50,7 @@ os.environ.setdefault("DERMIS_SNAPSHOT_URL", {url!r})
 
 from uagents import Agent
 
+from dermis_payments import set_wallet
 from dermis_uagents import protocols_for
 
 AGENT_KEY = {key!r}
@@ -56,6 +58,7 @@ AGENT_KEY = {key!r}
 ADDRESSES = {addresses}
 
 agent = Agent()
+set_wallet(agent.wallet)  # receives the certified-report payments (hub)
 for _protocol in protocols_for(AGENT_KEY, ADDRESSES):
     agent.include(_protocol, publish_manifest=True)
 

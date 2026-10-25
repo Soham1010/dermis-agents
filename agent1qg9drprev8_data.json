@@ -1,0 +1,29 @@
+{
+    "history:agent1qdqt3qf6ya54vns92cvzgrs2j0rlz96ryl8y4hpg6fnzveengntac7jshy2": [
+        {
+            "role": "user",
+            "content": "which region grew most?\nregion,q1,q2\nNorth,10,15\nSouth,20,19\nEast,5,12"
+        },
+        {
+            "role": "assistant",
+            "content": "**East grew most** — from 5 to 12, a gain of **+7 units (+140%)**, the largest in both absolute and percentage terms.\n\n| Region | Q1 | Q2 | Growth | Growth % |\n|--------|----|----|--------|----------|\n| **East** | 5 | 12 | **+7** | **+140%** |\n| North | 10 | 15 | +5 | +50% |\n| South | 20 | 19 | −1 | −5% |\n\nNote the flip side: South is the biggest region but the only one that shrank. Want a bar chart of this, or a deeper look (e.g., if you have more quarters to add)?"
+        }
+    ],
+    "session:agent1qdqt3qf6ya54vns92cvzgrs2j0rlz96ryl8y4hpg6fnzveengntac7jshy2": {
+        "dataset": {
+            "source": "pasted",
+            "name": "pasted data",
+            "text": "region,q1,q2\nNorth,10,15\nSouth,20,19\nEast,5,12",
+            "derived": [
+                [
+                    "growth",
+                    "q2 - q1"
+                ],
+                [
+                    "growth_pct",
+                    "(q2 - q1) / q1 * 100"
+                ]
+            ]
+        }
+    }
+}

@@ -8,6 +8,7 @@ This is the same ChatMessage flow ASI:One uses, routed straight to the local Bur
 """
 
 import argparse
+import json
 import asyncio
 import logging
 import os
@@ -17,6 +18,7 @@ from uagents.resolver import RulesBasedResolver
 from uagents_core.contrib.protocols.chat import (
     ChatAcknowledgement,
     ChatMessage,
+    MetadataContent,
     TextContent,
     chat_protocol_spec,
 )
@@ -62,6 +64,10 @@ async def send(ctx: Context):
 async def on_reply(ctx: Context, sender: str, msg: ChatMessage):
     await ctx.send(sender, ChatAcknowledgement(acknowledged_msg_id=msg.msg_id))
     print("\n" + "\n".join(c.text for c in msg.content if isinstance(c, TextContent)), flush=True)
+    for c in msg.content:
+        if isinstance(c, MetadataContent) and c.metadata.get("card_kind"):
+            payload = json.loads(c.metadata["card_payload"])
+            print(f"\n[card: {c.metadata['card_kind']} · {payload.get('title')}]", flush=True)
     os._exit(0)
 
 

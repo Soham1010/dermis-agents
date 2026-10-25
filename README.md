@@ -3,38 +3,85 @@
 ![tag:innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3)
 ![tag:hackathon](https://img.shields.io/badge/hackathon-5F43F1)
 
-Fourteen uAgents that turn Dermis tactile-glove recordings into decisions for specific robotics
-applications. Ask in ASI:One, for example “compare all applications on episode 4”. The hub then
-has ten specialists judge the same recording against their own force limits and failure tolerances,
-and returns a chart, a readiness score per application and the first thing to change.
+Robots are getting hands, but no sense of touch: they crush eggs, drop bottles and can't tell a sensor
+glitch from a failed grip. Dermis makes a magnetic tactile glove, and these agents turn its touch data
+into decisions. Ask in ASI:One, in plain words, whether a grasp is safe for *your* robot (humanoid,
+factory arm, robot dog, prosthetic hand, warehouse picker…), why it failed, and what to change. The
+agents plan, call tools over real data, consult each other, answer with charts and interactive cards,
+and sell a certified report for 0.1 FET over the Payment Protocol. They also analyze any dataset you
+bring.
 
 Built for the Fetch.ai track at Cal Hacks 13.0
 ([hackpack](https://www.fetch.ai/events/hackathons/calhacks-13-0/hackpack)).
 
+## Fetch.ai challenge checklist
+
+| Requirement | How this project meets it |
+|---|---|
+| Agent registered on Agentverse | 8 hosted agents (`tools/deploy_hosted.py`), or mailbox agents from `run.py` + `connect.py` |
+| Agent Chat Protocol | every agent includes `chat_protocol_spec` (`dermis_agents/agents.py`) |
+| Discoverable and usable in ASI:One | agent READMEs with keywords, descriptions and starter prompts; the full workflow runs in the chat |
+| Meaningful tool use / multi-agent orchestration | ASI:One `asi1` agents with 19 tools; the hub consults specialist agents with `ask_agent` (uAgents messages) |
+| Whole workflow inside ASI:One | ask → analysis with charts → card buttons → payment → certified report, no custom frontend |
+| Public GitHub repo with instructions | this repo; Run it section below |
+| Bonus: multi-agent collaboration | hub ↔ specialists over a typed `TouchQuery`/`TouchReport` protocol, answers combined by the hub |
+| Bonus: Payment Protocol, credible model | hub sells a certified readiness report: 0.1 FET, `fet_direct`, verified on-chain with cosmpy (`payments.py`) |
+| Bonus: ASI Interactive Cards | start form, recording detail card with actions, purchase review card (`cards.py`) |
+| Bonus: reliability and recovery | tool errors go back to the model to retry; dead specialist → hub runs it; LLM down → structured report |
+| Bonus: real-time data and external services | live SpacetimeDB SQL, any CSV/JSON URL, web pages, QuickChart, Fetch ledger |
+| Bonus: keeps running after the hackathon | hosted on Agentverse, data from a versioned snapshot, rebuilt when new recordings land |
+| Innovation Lab badges | at the top of this README and every agent README |
+
 ## The agents
 
-| Key | Agent name | What it judges |
+All of them speak the Chat Protocol and are LLM agents with tools. Hosted: the 8 marked ★ (free
+Agentverse accounts hold 8); the other specialists answer through the hub.
+
+| Key | Agent name | What it does |
 |---|---|---|
-| `hub` | dermis_hub | Front door. Routes to specialists, fans out, combines, compares across all applications |
-| `humanoid_arm` | dermis_humanoid_arm | Dexterous humanoid hands: grasp stability, fragile objects, finger timing |
-| `industrial_arm` | dermis_industrial_arm | Production grippers: yield, repeatability, headroom (fleet view first) |
-| `quadruped` | dermis_quadruped | Robot dogs: foot contact timing, foot slip, touchdown impact |
-| `prosthetic_hand` | dermis_prosthetics | Prosthetics: never crush, never drop, a grip state the wearer can be told |
+| `hub` ★ | dermis_hub | Front door and orchestrator. Answers with tools, consults specialists, shows cards, sells the certified report |
+| `humanoid_arm` ★ | dermis_humanoid_arm | Dexterous humanoid hands: grasp stability, fragile objects, finger timing |
+| `industrial_arm` ★ | dermis_industrial_arm | Production grippers: yield, repeatability, headroom |
+| `quadruped` ★ | dermis_quadruped | Robot dogs: foot contact timing, foot slip, touchdown impact |
+| `warehouse` ★ | dermis_warehouse | Pick and place: drops, slip on heavy items, impact |
+| `sensor_qa` ★ | dermis_sensor_qa | Sensor health: saturation, noise vs spec, dropped frames; separates sensor faults from grip failures |
+| `data_explorer` ★ | dermis_data_explorer | Data Analyst: any CSV/TSV/JSON by URL or pasted, plus the Dermis data. Filter, group, pivot, computed columns, correlations, charts |
+| `visualizer` ★ | dermis_visualizer | Charts for the recordings or any dataset: dashboards, time series, overlays, histograms, scatter, pie, radar, heatmaps |
+| `prosthetic_hand` | dermis_prosthetics | Prosthetics: never crush, never drop |
 | `surgical` | dermis_surgical | Delicate handling: 50% safety factor on yield, noise floor |
-| `warehouse` | dermis_warehouse | Pick and place: drops, slip on heavy items, impact (fleet view first) |
 | `food_agri` | dermis_food_agri | Produce: crushing and bruising |
 | `eldercare` | dermis_eldercare | Care robots: hand-over safety, over-pressure, predictable release |
 | `teleop` | dermis_teleop | The glove itself: touch detection latency, what the operator feels |
-| `sensor_qa` | dermis_sensor_qa | Sensor health: saturation, noise vs spec, dropped frames. Separates sensor faults from grip failures |
-| `data_curator` | dermis_data_curator | Training data: label balance, coverage gaps, what to record next, baseline F1 |
-| `data_explorer` | dermis_data_explorer | Pandas-style tables: overview, crosstab, pivot, group-by any metric, per-episode stats and calibration fit. Shows the pandas expression behind each table |
-| `visualizer` | dermis_visualizer | Charts: dashboards, signal time series, SafeGrip overlays, histograms, scatter with Pearson r, pie, radar, heatmap grid. Numbers under every chart |
+| `data_curator` | dermis_data_curator | Training data: label balance, coverage gaps, what to record next |
 
-Print the addresses with `python run.py --addresses`. They are derived from `AGENT_SEED_SECRET`
-(or `.agent_seed`), so share that secret privately within the team to get the same addresses everywhere.
+Hosted agents get their addresses from Agentverse; after deploying, they're printed by
+`tools/deploy_hosted.py` and stored in `hosted/<agent>/.avctl/config.toml`.
 
-<!-- Fill in after the first mailbox run, for judges: -->
+<!-- Fill in after deploying, for judges: -->
 **Hub address:** `agent1q…` · **Agentverse profile:** https://agentverse.ai/agents/details/agent1q…
+
+## Try it in ASI:One
+
+- `hi` → a form card to pick robot, object, scenario and SafeGrip
+- `Why did episode 4 fail, and would SafeGrip have saved it?` → analysis, chart and a detail card
+- `Ask the warehouse agent which items we drop most` → the hub consults a specialist agent
+- `Compare all applications on episode 4` → one recording scored for 10 robot types
+- `I need a certified report for episode 4` → review card → Pay 0.1 FET → report verified on-chain
+- `Analyze https://raw.githubusercontent.com/mwaskom/seaborn-data/master/tips.csv` → any dataset
+- paste a CSV into the chat and ask a question about it
+- `Read https://en.wikipedia.org/wiki/Tactile_sensor and compare it to Dermis`
+
+## Payments and cards
+
+- **Certified readiness report** (`payments.py`, `specialist.certified_report`): one recording scored
+  against all 10 applications with verdicts, evidence, the SafeGrip what-if, fleet context, a fix list and
+  a JSON summary that includes the payment receipt. Price `DERMIS_REPORT_PRICE_FET` (default 0.1 FET), paid
+  with `fet_direct` to the hub's wallet. The hub verifies the transaction on-chain (recipient, amount,
+  denom, buyer when given; each transaction is accepted once) before sending `CompletePayment` and the
+  report. Testnet by default (`DERMIS_FET_TESTNET=true`), so demos cost nothing.
+- **Interactive cards** (`cards.py`, card protocol v1): a start form, a detail card after each analysis
+  (compare all applications / SafeGrip on vs off / buy the report), and a review card before paying. The
+  Pay and Not now buttons are handled without the LLM, so money paths stay deterministic.
 
 ## How it works
 
@@ -59,10 +106,13 @@ agents (which have no pandas and can't ship 222 MB of recordings).
   magnetometer rail, robust noise against the MLX90393 spec, dropped frames and friction margin. It
   also finds the SafeGrip on/off twin of the same run to show what would have changed.
 - **Every agent is an ASI:One LLM agent with tools** (`dermis_agents/brain.py`). The `asi1` model holds the
-  conversation (it remembers the last turns per user), decides what to look up, and calls tools that run
-  the real analysis: list recordings, analyze one, fleet stats, compare all applications, sensor health,
-  dataset overview, charts and tables. The hub also has `ask_agent`, which messages a specialist agent
-  over uAgents and folds its answer in. The model is told to take every number from a tool. Charts reach
+  conversation (it remembers the last turns and the active dataset per user), plans, and calls tools:
+  recordings (list, analyze, fleet stats, compare applications, sensor health, overview, charts, tables),
+  any dataset (`dataset.py`: load by URL or paste, describe, query, pivot, add computed columns with a
+  whitelisted formula parser, correlate, chart), outside data (`connectors.py`: web pages, live
+  SpacetimeDB SQL), a start form, and on the hub the paid report and `ask_agent`, which messages a
+  specialist agent over uAgents and folds its answer in. Set `ASI1_AGENT_MODEL` to change the model
+  (`asi1-ultra` needs ASI:One Pro). The model is told to take every number from a tool. Charts reach
   the model as `[[chart:N]]` tokens and are swapped back in afterwards. If ASI:One is unreachable, the
   agent answers with the structured report instead.
 - **Charts** are QuickChart image URLs, so they render inline in ASI:One. The chart URL contains
@@ -159,7 +209,12 @@ dermis_agents/
   llm.py         ASI:One LLM client with rule fallbacks
   viz.py         Data Explorer (tables) and Visualizer (chart picker), pure Python
   charts.py      QuickChart URLs + text sparklines
-  agents.py      uAgents: Chat Protocol, internal TouchQuery protocol, recovery
+  agents.py      uAgents: Chat Protocol, internal TouchQuery protocol, recovery, cards, payments
+  brain.py       the LLM agent loop and its 19 tools
+  dataset.py     table engine for any CSV/TSV/JSON dataset (pure Python)
+  connectors.py  web pages and live SpacetimeDB SQL
+  cards.py       ASI:One Interactive Cards
+  payments.py    Payment Protocol seller with on-chain FET verification
 run.py           starts one process per agent (local or mailbox)
 connect.py       connects/disconnects mailbox agents on Agentverse
 tools/           build_hosted.py + deploy_hosted.py for Agentverse-hosted agents

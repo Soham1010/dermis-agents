@@ -9,6 +9,7 @@ os.environ.setdefault("DERMIS_SNAPSHOT_URL", 'https://raw.githubusercontent.com/
 
 from uagents import Agent
 
+from dermis_payments import set_wallet
 from dermis_uagents import protocols_for
 
 AGENT_KEY = 'warehouse'
@@ -16,6 +17,7 @@ AGENT_KEY = 'warehouse'
 ADDRESSES = {}
 
 agent = Agent()
+set_wallet(agent.wallet)  # receives the certified-report payments (hub)
 for _protocol in protocols_for(AGENT_KEY, ADDRESSES):
     agent.include(_protocol, publish_manifest=True)
 

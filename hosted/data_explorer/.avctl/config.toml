@@ -2,5 +2,5 @@
   address = ""
   include = ""
   readme_path = "README.md"
-  description = "pandas-style tables over Dermis recordings: describe, crosstab, pivot and group-by, with the pandas expression behind each table"
-  starter_prompts = ["Show the dataset overview", "Peak force by object and scenario", "Latency by safe grip", "Table stats for episode 4"]
+  description = "analysis of any dataset you bring (CSV, TSV, JSON or JSON lines by URL or pasted into the chat) and of the Dermis recordings: describe, filter, group, pivot, computed columns, correlations, charts"
+  starter_prompts = ["Analyze https://raw.githubusercontent.com/mwaskom/seaborn-data/master/tips.csv", "Paste a CSV and ask a question about it", "Peak force by object and scenario", "Which columns correlate most?"]
