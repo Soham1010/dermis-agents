@@ -214,11 +214,16 @@ class _Tx:
         return self._ok
 
 
-def _ledger(tx):
+def _ledger(tx, on_testnet=True):
     class L:
+        def __init__(self, testnet):
+            self.testnet = testnet
+
         def query_tx(self, h):
+            if self.testnet != on_testnet:
+                raise KeyError("not found")
             return tx
-    return lambda: L()
+    return lambda testnet=True: L(testnet)
 
 
 def test_payment_verification():
@@ -247,3 +252,10 @@ def test_cards_and_selections():
 def test_certified_report_contents():
     md = specialist.certified_report("episode_0004", "0.1 FET · tx T · stable-testnet")
     assert "Passes 2 of 10 applications" in md and "tx T" in md and '"verdicts"' in md
+
+
+def test_payment_found_on_the_other_network():
+    from dermis_agents import payments as P
+    main = {"recipient": "fetch1me", "sender": "fetch1buyer", "amount": f"{10**17}afet"}
+    ok, why = P.verify_payment("tx", "0.1", "fetch1me", None, _ledger(_Tx(True, main), on_testnet=False))
+    assert ok and "mainnet" in why
