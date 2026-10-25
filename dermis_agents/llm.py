@@ -6,6 +6,7 @@ fallback, so agents keep working with no API key or when the API is down.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -60,11 +61,18 @@ async def chat(messages: list[dict], tools: list[dict], max_tokens: int = 1200) 
             "temperature": 0.3, "max_tokens": max_tokens}
     try:
         async with httpx.AsyncClient(timeout=45) as client:
-            r = await client.post(
-                f"{base}/chat/completions",
-                headers={"Authorization": f"Bearer {key}"},
-                json=body,
-            )
+            for attempt in range(3):
+                r = await client.post(
+                    f"{base}/chat/completions",
+                    headers={"Authorization": f"Bearer {key}"},
+                    json=body,
+                )
+                if r.status_code not in (429, 502, 503) or attempt == 2:
+                    break
+                # Rate limited (Base tier: 4 requests/minute) or briefly down: wait, then retry.
+                wait = min(float(r.headers.get("retry-after") or 0) or 8.0 * (attempt + 1), 20.0)
+                log.warning("ASI:One %s, retrying in %.0f s", r.status_code, wait)
+                await asyncio.sleep(wait)
             if r.status_code >= 400:
                 last_error = f"HTTP {r.status_code} from {base}: {r.text[:200]}"
                 return None
