@@ -32,5 +32,24 @@
             "role": "assistant",
             "content": "That's a blank **NYSAA Data Collection Sheet for Discrete Trial Data** — a special-education assessment form. In short:\n\n- **Purpose:** Records discrete-trial data for students assessed under the New York State Alternate Assessment (NYSAA).\n- **Content areas:** ELA, Mathematics, Science, and Social Studies.\n- **Data grid:** Columns for dates plus accuracy (ACC) and independence (IND) entries per trial.\n- **Scoring sections:** Trial counts, fractions, percentages, and staff initials for verification.\n\nIt's currently blank — a template to be filled in during instruction sessions.\n\nThat's outside my wheelhouse, though — I'm built for the tactile grasp dataset (192 simulated grasps, 6 objects, 4 scenarios, SafeGrip on/off). If you want, I can visualize something from that instead, like a dashboard, a success-rate heatmap, or a force profile for a specific episode."
         }
-    ]
+    ],
+    "history:agent1qdqt3qf6ya54vns92cvzgrs2j0rlz96ryl8y4hpg6fnzveengntac7jshy2": [
+        {
+            "role": "user",
+            "content": "heatmap of success"
+        },
+        {
+            "role": "assistant",
+            "content": "Here's the success heatmap across all 192 simulated grasps (object × scenario):\n\n\n\n**What it shows:**\n- **Drop is the universal failure mode** — 0% success for every object, so grip timing/release is the weak point, not force control.\n- **Crush and light_grip are mostly fine** — SafeGrip-style force limiting handles crush well (ball, bottle, sponge at 88–100%), and light grips only hurt fragile items (egg 62%, bottle 0%).\n- **Nominal is surprisingly shaky** — cup (38%), egg (38%), can and sponge (50%) fail half the time even in the easy case, so there's headroom beyond the extreme scenarios.\n- **Hardest cell:** ball in drop (0%). **Easiest:** ball in crush (100%).\n\nNote: these are simulated recordings (dermis-sim-v1), not hardware sessions yet.\n\n**Next steps:**\n- I can split this heatmap by SafeGrip on/off to see how much the force limiter rescues crush/light_grip cells.\n- Or drill into the nominal failures (cup, egg) — likely slip or early_release — with per-episode analysis."
+        },
+        {
+            "role": "user",
+            "content": "pie of outcomes"
+        },
+        {
+            "role": "assistant",
+            "content": "Here's the outcome breakdown across all 192 simulated grasps:\n\n\n\n| Outcome | Episodes | Share |\n|---|---|---|\n| success | 101 | 53% |\n| early_release | 39 | 20% |\n| fracture | 32 | 17% |\n| incomplete | 10 | 5% |\n| slip | 9 | 5% |\n| impact | 1 | 1% |\n\n**What it shows:**\n- **Success is only 53%** — barely over half the dataset ends in a clean grasp.\n- **early_release (20%) and fracture (17%) dominate the failures** — together they're ~75% of all bad outcomes, pointing at release timing and force limiting as the two big problems.\n- **Slip is rare (5%)** — the tactile sensing itself seems to detect contact well; it's the grip policy that fails, not the sensing.\n- **impact (1 episode)** is a near-non-issue in simulation.\n\nNote: simulated data (dermis-sim-v1), not hardware sessions yet.\n\n**Next steps:**\n- Split this pie by SafeGrip on/off to see how much the force limiter cuts the fracture share.\n- Or a pie per object (e.g. egg vs sponge) to see which items drive the fracture count."
+        }
+    ],
+    "session:agent1qdqt3qf6ya54vns92cvzgrs2j0rlz96ryl8y4hpg6fnzveengntac7jshy2": {}
 }
