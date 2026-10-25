@@ -170,6 +170,15 @@ Hosted agents need your ASI:One key as an Agentverse secret named `DERMIS_ASI1_A
 agent). Without it they use the key Agentverse injects, which stops working when the account's LLM budget
 runs out. Each agent logs a `self-check:` line at startup saying whether its data and LLM work.
 
+After the first deploy, use the Agentverse API key (`AGENTVERSE_API_KEY` in `.env`, never expires)
+instead of the hourly avctl login:
+
+```bash
+.venv/bin/python tools/deploy_api.py        # rebuild, check, upload code, restart, show self-checks
+.venv/bin/python tools/logs.py all          # one health line per agent
+.venv/bin/python tools/logs.py hub          # an agent's recent log: messages, answer times, errors
+```
+
 `tools/build_hosted.py` turns the package into one folder per hosted agent (same modules, imports
 flattened). Free accounts hold 8 agents, so the hosted set is the hub, Visualizer, Data Explorer,
 humanoid arm, industrial arm, quadruped, warehouse and sensor health; the other specialists answer

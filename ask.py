@@ -30,6 +30,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("text", nargs="+")
 ap.add_argument("--to", default=agents.HUB_KEY, choices=agents.all_keys())
 ap.add_argument("--timeout", type=float, default=120)
+ap.add_argument("--port", type=int, default=8199, help="this client's own port")
 args = ap.parse_args()
 
 endpoint = f"http://127.0.0.1:{agents.port_for(args.to)}/submit"
@@ -37,8 +38,8 @@ target = agents.address_for(args.to)
 client = Agent(
     name="dermis_cli",
     seed=f"{agents.seed_secret()}:dermis:cli",
-    port=8199,
-    endpoint=["http://127.0.0.1:8199/submit"],
+    port=args.port,
+    endpoint=[f"http://127.0.0.1:{args.port}/submit"],
     resolve=RulesBasedResolver({target: endpoint}),
     publish_agent_details=False,
     enable_agent_inspector=False,

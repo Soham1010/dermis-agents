@@ -9,6 +9,7 @@ that specialist's analysis itself, so a dead agent degrades the answer instead o
 import asyncio
 import json
 import re
+import time
 import secrets
 from uagents import Agent, Context, Model, Protocol
 from uagents_core.identity import Identity
@@ -82,6 +83,14 @@ def profile_readme(p: Profile) -> str:
             + (f"\nNote: {p.proxy_note}\n" if p.proxy_note else ""))
 
 
+MENTION = re.compile(r"^\s*(?:@\S+\s*)+")
+# Answers in progress and recently sent, per (sender, text). ASI:One users resend a message when the
+# first reply is slow; the duplicate then gets the same answer instead of a second, slower run.
+_inflight: dict[tuple[str, str], asyncio.Future] = {}
+_recent: dict[tuple[str, str], tuple[float, dict]] = {}
+RECENT_S = 180
+
+
 def chat_protocol(answer) -> Protocol:
     """ACP handler: ack, answer the text, reply with markdown and end the session."""
     proto = Protocol(spec=chat_protocol_spec)
@@ -90,14 +99,36 @@ def chat_protocol(answer) -> Protocol:
     async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
         await ctx.send(sender, ChatAcknowledgement(acknowledged_msg_id=msg.msg_id))
         text = " ".join(c.text for c in msg.content if isinstance(c, TextContent)).strip()
+        text = MENTION.sub("", text).strip()  # "@agent1q… question" → "question"
         if not text:
             return  # start-session or metadata only
         ctx.logger.info(f"chat from {sender[:16]}…: {text[:120]}")
-        try:
-            reply = await answer(ctx, sender, text)
-        except Exception as e:  # never leave ASI:One hanging
-            ctx.logger.exception("answer failed")
-            reply = f"Sorry, that request failed inside the agent: {e}"
+        started = time.monotonic()
+        key = (sender, " ".join(text.lower().split()))
+        now = time.time()
+        for k in [k for k, (t, _) in _recent.items() if now - t > RECENT_S]:
+            _recent.pop(k, None)
+        if key in _inflight:
+            ctx.logger.info("same message again while answering it: sending that answer when ready")
+            try:
+                reply = await asyncio.wait_for(asyncio.shield(_inflight[key]), timeout=120)
+            except Exception:
+                reply = {"text": "Still working on your previous message; the answer will arrive shortly."}
+        elif key in _recent:
+            ctx.logger.info("same message again: resending the recent answer")
+            reply = _recent[key][1]
+        else:
+            fut = asyncio.get_running_loop().create_future()
+            _inflight[key] = fut
+            try:
+                reply = await answer(ctx, sender, text)
+            except Exception as e:  # never leave ASI:One hanging
+                ctx.logger.exception("answer failed")
+                reply = f"Sorry, that request failed inside the agent: {e}"
+            reply = reply if isinstance(reply, dict) else {"text": reply}
+            fut.set_result(reply)
+            _inflight.pop(key, None)
+            _recent[key] = (time.time(), reply)
         reply = reply if isinstance(reply, dict) else {"text": reply}
         content = [TextContent(type="text", text=reply["text"])]
         if reply.get("card"):
@@ -108,6 +139,8 @@ def chat_protocol(answer) -> Protocol:
         if len(content) == 1:  # a card waits for a button press, so only plain answers end the session
             content.append(EndSessionContent(type="end-session"))
         await ctx.send(sender, ChatMessage(content=content))
+        ctx.logger.info(f"answered in {time.monotonic() - started:.1f} s ({len(reply['text'])} chars"
+                        f"{', card ' + reply['card']['kind'] if reply.get('card') else ''})")
 
     @proto.on_message(ChatAcknowledgement)
     async def on_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
@@ -149,6 +182,10 @@ async def converse(ctx: Context, sender: str, key: str, text: str, fallback, ask
         if sel and sel["action"] in ("confirm_purchase", "cancel_purchase"):
             return await purchase_step(ctx, sender, sel)
     history = ctx.storage.get(f"history:{sender}") or []
+    if GREETING.match(text):  # instant, no LLM: the first message must never feel broken
+        result = greeting(key)
+        ctx.storage.set(f"history:{sender}", brain.remember(history, text, result["text"]))
+        return result
     session = ctx.storage.get(f"session:{sender}") or {}
     result = await brain.converse(key, text, history, ask, session)
     if result is None:
@@ -157,11 +194,24 @@ async def converse(ctx: Context, sender: str, key: str, text: str, fallback, ask
         result = {"text": await fallback(), "card": None, "purchase": None}
     if result.get("purchase") and key == HUB_KEY:
         result["card"] = cards.purchase_review(result["purchase"], payments.PRICE_FET, payments.NETWORK)
-    elif key == HUB_KEY and not result.get("card") and GREETING.match(text):
-        result["card"] = cards.start_form()  # first impressions shouldn't depend on the model's mood
     ctx.storage.set(f"history:{sender}", brain.remember(history, text, result["text"]))
     ctx.storage.set(f"session:{sender}", session)
     return result
+
+
+def greeting(key: str) -> dict:
+    if key == HUB_KEY:
+        text = ("Hi! I'm **Dermis Hub**: robot touch intelligence on Fetch.ai.\n\n"
+                "- **Diagnose a grasp**: why a robot crushed, dropped or slipped an object, and the fix\n"
+                "- **Judge it for your robot**: humanoid, factory arm, robot dog, prosthetic, warehouse and more\n"
+                "- **Consult specialist agents** and combine their verdicts\n"
+                "- **Analyze any dataset**: paste a table or send a CSV/JSON link\n"
+                f"- **Certified readiness report** for {payments.PRICE_FET} FET, verified on-chain\n\n"
+                "Pick a robot, object and scenario below, or just ask, e.g. *why did episode 4 fail?*")
+        return {"text": text, "card": cards.start_form()}
+    p = BY_KEY[key]
+    ex = "\n".join(f"- *{e}*" for e in p.examples[:4])
+    return {"text": f"Hi! I'm the **{p.title}**. I work on {p.domain}.\n\nTry:\n{ex}"}
 
 
 async def purchase_step(ctx: Context, sender: str, sel: dict) -> dict:
