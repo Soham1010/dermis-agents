@@ -61,6 +61,8 @@ Hosted agents get their addresses from Agentverse; after deploying, they're prin
 
 **Start here: Dermis Hub (@dermis-hub)** `agent1q02mu7cnwewnnc0k4v474nx5qjda4mdp9tvxlwjtrtccmyce7r5qqgzq3xj` · [Agentverse profile](https://agentverse.ai/agents/details/agent1q02mu7cnwewnnc0k4v474nx5qjda4mdp9tvxlwjtrtccmyce7r5qqgzq3xj)
 
+**Chat now:** [asi1.ai/ai/agent1q02mu7cnwewnnc0k4v474nx5qjda4mdp9tvxlwjtrtccmyce7r5qqgzq3xj](https://asi1.ai/ai/agent1q02mu7cnwewnnc0k4v474nx5qjda4mdp9tvxlwjtrtccmyce7r5qqgzq3xj) (works on desktop and in a phone browser)
+
 | Agent | Handle | Address | Agentverse |
 |---|---|---|---|
 | `hub` | @dermis-hub | `agent1q02mu7cnwewnnc0k4v474nx5qjda4mdp9tvxlwjtrtccmyce7r5qqgzq3xj` | [profile](https://agentverse.ai/agents/details/agent1q02mu7cnwewnnc0k4v474nx5qjda4mdp9tvxlwjtrtccmyce7r5qqgzq3xj) |
