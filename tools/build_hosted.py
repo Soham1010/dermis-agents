@@ -31,6 +31,10 @@ URL_FILE = OUT / "snapshot_url.txt"
 # Free Agentverse accounts hold 8 agents. Every other specialist still answers through the hub.
 HOSTED = ["hub", "visualizer", "data_explorer", "humanoid_arm", "industrial_arm", "quadruped",
           "warehouse", "sensor_qa"]
+# Agentverse @handles (lowercase letters, digits and hyphens; no underscores).
+HANDLES = {"hub": "dermis-hub", "data_explorer": "dermis-analyst", "visualizer": "dermis-charts",
+           "humanoid_arm": "dermis-humanoid", "industrial_arm": "dermis-industrial", "quadruped": "dermis-quadruped",
+           "warehouse": "dermis-warehouse", "sensor_qa": "dermis-sensors"}
 # Runtime modules (no numpy/pandas; features/data/snapshot are build-time only). agents.py is
 # renamed so it can't be confused with the package name.
 MODULES = {"config": "dermis_config", "profiles": "dermis_profiles", "store": "dermis_store",

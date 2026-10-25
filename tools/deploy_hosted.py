@@ -43,7 +43,7 @@ def check_snapshot(url: str) -> None:
 def deploy(key: str) -> bool:
     name, _, _ = hb.agents.identity_of(key)
     d = hb.OUT / key
-    r = avctl("hosting", "deploy", "-n", name, cwd=d)
+    r = avctl("hosting", "deploy", "-n", name, "--handle", hb.HANDLES[key], cwd=d)
     out = (r.stdout + r.stderr).strip()
     address = hb.deployed_address(key)
     ok = r.returncode == 0 and address.startswith("agent1")
