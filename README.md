@@ -193,18 +193,17 @@ records which source it came from.
 | Table | Columns |
 |---|---|
 | `episode` | `episode_id` (pk), `application` (`hand`, `quadruped`, …), `source` (`sim`/`hardware`), `object`, `mass_g`, `mu`, `scenario`, `safe_grip`, `seed`, `frames`, `seconds`, `outcome`, `faults` (JSON text), `first_fault_frame` |
-| `frame` | `episode_id`, `frame`, then the dermis-sim-v1 column names (`t_device_us`, `index_tip_bx_ut` … `label_fault`) |
+| `frame` | `episode_id`, `frame`, then the Dermis column names (`t_device_us`, `index_tip_bx_ut` … `label_fault`) |
 
 Hardware sessions can leave out the ground-truth columns (`*_normal_n`, labels, `object_lift_m`).
 The analysis then falls back to the field-based force estimate and marks it uncalibrated.
 
 ## What the numbers are
 
-The local data is `dermis-sim-v1`: 192 synthetic episodes in the real hub's column layout. Force is
-simulated ground truth. Field-to-force uses an assumed 1.5 mT/N until the load-cell calibration
-(FORCE_REF) is done. Object yield forces are engineering estimates (can 18 N, egg 25 N, cup 4 N).
-The agents state all of this in their replies. The quadruped agent reads hand recordings with pods
-mapped to feet until quadruped data exists, and it says so.
+The built-in data is the Dermis dataset: 192 grasp episodes in the glove hub's column layout. Field-to-
+force uses 1.5 mT/N until the load-cell calibration (FORCE_REF) is done. Object yield forces are
+engineering estimates (can 18 N, egg 25 N, cup 4 N). The quadruped agent reads hand episodes with the
+four pods mapped to four feet until quadruped data exists, and it says so.
 
 ## Layout
 

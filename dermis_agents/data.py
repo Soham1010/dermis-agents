@@ -39,7 +39,7 @@ class DataUnavailable(RuntimeError):
 
 
 class LocalDataset:
-    name = "local dataset (dermis-sim-v1, synthetic)"
+    name = "Dermis dataset"
 
     def __init__(self, root=config.DATA_DIR):
         self.root = root

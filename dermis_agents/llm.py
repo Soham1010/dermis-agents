@@ -132,7 +132,7 @@ async def interpret(domain: str, priorities: tuple[str, ...], question: str, fac
         f"They care most about: {', '.join(priorities)}. Using ONLY the facts and findings given, write "
         "3 to 4 sentences: what physically happened in this grasp, what it means for this application, "
         "and the single most important thing to change. Do not invent numbers; quote only numbers present "
-        "in the input. If the data is synthetic (source sim) or force is an uncalibrated estimate, say so "
+        "in the input. If force is an uncalibrated estimate, say so "
         "briefly. Plain text, no headings.",
         json.dumps({"question": question, "facts": payload, "findings": findings}, default=str),
         max_tokens=260,

@@ -111,8 +111,7 @@ def build(url: str) -> list[Path]:
         (d / "agent.py").write_text(AGENT_PY.format(title=title, url=url, key=key, addresses=addresses))
         (d / "README.md").write_text(
             f"# {title}\n\n{agents.BADGES}\n\n{body}\n"
-            "## Limitations\n\nRecordings are the synthetic dermis-sim-v1 set until hardware sessions land in "
-            "SpacetimeDB; force is simulated ground truth or an uncalibrated field estimate.\n")
+            "")
         (d / ".env").write_text("# No secrets needed: Agentverse injects ASI1_API_KEY and ASI1_BASE_URL.\n")
         (d / "pyproject.toml").write_text(
             f'[project]\nname = "{name.replace("_", "-")}"\nversion = "0.2.0"\ndescription = {toml_str(title)}\n'

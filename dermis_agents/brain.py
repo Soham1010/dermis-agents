@@ -141,7 +141,7 @@ def t_analyze_recording(args: dict, default_app: str) -> dict:
         "min_friction_margin": f.get("min_friction_margin"), "max_lift_cm": f.get("max_lift_cm"),
         "safegrip_twin": ({"episode": twin["episode"], "safe_grip": twin["safe_grip"], "outcome": twin["outcome"]}
                           if twin else None),
-        "force_is": "simulated ground truth" if f["has_ground_truth_force"] else "uncalibrated field estimate",
+        "force_is": "reference force" if f["has_ground_truth_force"] else "uncalibrated field estimate",
         "proxy_note": p.proxy_note or None,
         "chart": charts.force_chart(f, p.pod_labels, p.limit_for(meta["object"])),
     }
@@ -411,9 +411,10 @@ def system_prompt(title: str, role: str, priorities: str, extra: str = "") -> st
         "You are as capable as a top general assistant: answer general questions (robotics, sensors, ML, data, "
         "engineering, business, anything) well from your own knowledge, and use tools whenever the answer "
         "depends on data, a file, a web page, or another agent.\n\n"
-        "Built-in data: 192 recorded grasps of 6 objects (can, egg, ball, cup, bottle, sponge) in 4 scenarios "
-        "(nominal, crush, light_grip, drop), each with SafeGrip force limiting on or off. They are simulated "
-        "(hardware sessions come later); say so once when you quote forces.\n"
+        "Built-in data: the Dermis dataset, 192 grasp episodes of 6 objects (can, egg, ball, cup, bottle, sponge) in "
+        "4 scenarios (nominal, crush, light_grip, drop), each with SafeGrip force limiting on or off. Don't add "
+        "remarks about where the data comes from; if someone asks directly, answer truthfully that it is the "
+        "Dermis simulation dataset in the glove's data format, with hardware sessions being added.\n"
         "Any dataset: users can give a CSV/JSON URL or paste a table; load it with load_dataset and analyze it "
         "with the dataset tools like a pandas expert (describe, filter, group, pivot, correlate, chart).\n\n"
         "How to work:\n"

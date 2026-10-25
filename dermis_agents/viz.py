@@ -311,7 +311,7 @@ def explore_episode(text: str, parsed: dict) -> dict:
           charts.grouped_bar([HAND_PODS[p] for p in PODS if p in force],
                              {"peak N": peaks, "mean in contact N": [round(m, 2) for m in means]},
                              f"{meta['episode']} · force per pod", "N"), "",
-          f"### {'Normal force (N, sim ground truth)' if gt else 'Force estimated from field (N, uncalibrated)'} per pod",
+          f"### {'Normal force (N)' if gt else 'Force estimated from field (N, uncalibrated)'} per pod",
           code("df[[f'{pod}_normal_n' for pod in PODS]].describe()"), "",
           md_table(["pod", "mean", "std", "min", "median", "max (downsampled)", "true peak"], desc_rows), "",
           *lines,
